@@ -1,0 +1,18 @@
+fastapi
+pydantic==2.11.4
+python-dotenv==1.1.0
+starlette==0.46.2
+uvicorn==0.34.2
+pydantic-settings==2.9.1
+SQLAlchemy==2.0.40
+python-jose==3.4.0
+passlib==1.7.4
+cryptography==44.0.3
+bcrypt==3.2.2
+pillow==11.2.1
+# Code quality
+# ------------------------------------------------------------------------------
+black==25.1.0
+pre-commit==3.7.0
+ruff==0.4.2
+pytest==8.3.5
