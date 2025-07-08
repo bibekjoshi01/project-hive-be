@@ -4,6 +4,7 @@ from psycopg2.extras import RealDictCursor
 from app.config import settings
 from contextlib import asynccontextmanager
 import sys
+from app.api import router as api_router
 
 db_pool = None
 
@@ -31,7 +32,7 @@ async def lifespan(app: FastAPI):
 
 
 app = FastAPI(lifespan=lifespan, title=settings.app_name, version=settings.app_version)
-
+app.include_router(api_router, prefix="/api")
 
 @app.get("/health", tags=["Site"])
 async def health_check():
