@@ -7,6 +7,12 @@ class Settings(BaseSettings):
     secret_key: str
     database_url: str
 
+    # Email Config
+    email_host: str
+    email_port: int
+    email_username: str
+    email_password: str
+
     model_config = SettingsConfigDict(
         env_file=".env" if Path(".env").exists() else ".env.example"
     )
