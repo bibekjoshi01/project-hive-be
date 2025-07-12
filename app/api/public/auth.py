@@ -1,13 +1,30 @@
-from fastapi import APIRouter, HTTPException, Request, Response, status
+from fastapi import APIRouter, Depends, HTTPException, Request, Response, status
 from fastapi.responses import JSONResponse
 from jose import JWTError
+from fastapi import Form, UploadFile, File
+from typing import Annotated
 
 # Project Imports
+from app.dependencies import get_current_user
 from app.utils._jwt import create_access_token, create_refresh_token, decode_token
 from app.utils.generators import generate_username
-from app.utils.user import create_user, get_user_by_email, verify_otp
+from app.utils.user import (
+    create_user,
+    get_user_by_email,
+    get_user_data_by_id,
+    update_user_profile,
+    verify_otp,
+)
+from app.utils.file_handlers import get_full_url, save_upload_file
 from app.utils.send_otp import send_otp_email
-from .schemas.auth import LoginPayload, LoginResponse, OTPPayload, Tokens
+from .schemas.auth import (
+    LoginPayload,
+    LoginResponse,
+    OTPPayload,
+    ProfileResponse,
+    ProfileUpdateResponse,
+    Tokens,
+)
 
 
 router = APIRouter(prefix="/auth")
@@ -76,3 +93,54 @@ async def refresh(request: Request):
     )
 
 
+@router.get("/profile", response_model=ProfileResponse)
+async def profile(request: Request, current_user: dict = Depends(get_current_user)):
+    user_data = get_user_data_by_id(current_user["id"])
+
+    if not user_data:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND, detail="User not found"
+        )
+    user_data["date_joined"] = user_data["date_joined"].isoformat()
+
+    if user_data.get("photo"):
+        user_data["photo"] = get_full_url(request, user_data["photo"])
+
+    return user_data
+
+
+@router.patch("/profile/update", response_model=ProfileUpdateResponse)
+async def update_profile(
+    first_name: Annotated[str | None, Form()] = None,
+    last_name: Annotated[str | None, Form()] = None,
+    phone_no: Annotated[str | None, Form()] = None,
+    photo: Annotated[UploadFile | None, File()] = None,
+    current_user: dict = Depends(get_current_user),
+):
+
+    data = {
+        k: v
+        for k, v in {
+            "first_name": first_name,
+            "last_name": last_name,
+            "phone_no": phone_no,
+        }.items()
+        if v is not None
+    }
+
+    if photo:
+        data["photo"] = save_upload_file(
+            photo, "user/photos", allowed_extensions=[".jpg", ".png", ".jpeg"]
+        )  # store relative URL
+
+    if not data:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST, detail="No data provided"
+        )
+
+    set_clauses = [f"{field} = %s" for field in data]
+    params = list(data.values()) + [current_user["id"]]
+
+    update_user_profile(set_clauses, params)
+
+    return JSONResponse({"message": "Profile updated successfully"})

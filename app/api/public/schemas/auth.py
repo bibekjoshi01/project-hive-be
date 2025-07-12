@@ -17,3 +17,21 @@ class Tokens(BaseModel):
     access_token: str
     refresh_token: str
     token_type: str = "bearer"
+
+
+class ProfileResponse(BaseModel):
+    id: int
+    uuid: str
+    username: str
+    email: str
+    first_name: str
+    last_name: str
+    phone_no: str
+    email: str
+    photo: str | None
+    date_joined: str
+    user_role: str
+
+
+class ProfileUpdateResponse(BaseModel):
+    message: str

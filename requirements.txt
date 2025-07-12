@@ -8,6 +8,7 @@ SQLAlchemy==2.0.40
 python-jose==3.4.0
 passlib==1.7.4
 cryptography==44.0.3
+python-multipart==0.0.20
 bcrypt==3.2.2
 pillow==11.2.1
 # Code quality

@@ -1,15 +1,21 @@
+import sys
+from pathlib import Path
 from fastapi import FastAPI
 from psycopg2 import pool, OperationalError
 from psycopg2.extras import RealDictCursor
-from app.config import settings
 from contextlib import asynccontextmanager
-import sys
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.middleware.trustedhost import TrustedHostMiddleware
+from fastapi.staticfiles import StaticFiles
 
+from app.config import settings
 from app.api import router as api_router
 
 db_pool = None
+MEDIA_ROOT = Path("media")
+MEDIA_ROOT.mkdir(parents=True, exist_ok=True)
+allowed_cors_origins = settings.allowed_cors_origins
+allowed_hosts = settings.allowed_hosts
 
 
 @asynccontextmanager
@@ -34,10 +40,8 @@ async def lifespan(app: FastAPI):
         db_pool.closeall()
 
 
-allowed_cors_origins = settings.allowed_cors_origins
-allowed_hosts = settings.allowed_hosts
-
 app = FastAPI(lifespan=lifespan, title=settings.app_name, version=settings.app_version)
+app.mount("/media", StaticFiles(directory=MEDIA_ROOT), name="media")
 app.include_router(api_router, prefix="/api")
 
 # Middlewares
@@ -51,8 +55,3 @@ app.add_middleware(
 
 if settings.debug:
     app.add_middleware(TrustedHostMiddleware, allowed_hosts=["*"])
-
-
-@app.get("/health", tags=["Site"])
-async def health_check():
-    return {"status": "ok"}
