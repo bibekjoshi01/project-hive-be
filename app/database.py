@@ -1,6 +1,7 @@
 from psycopg2 import pool
 from psycopg2.extras import RealDictCursor
 from typing import Optional, Any, Tuple
+from psycopg2.extras import RealDictCursor
 
 from .config import settings
 
@@ -19,11 +20,11 @@ def put_connection(conn):
     db_pool.putconn(conn)
 
 
-def perform_query(query: str):
+def perform_query(query: str, params: tuple = ()):
     conn = get_connection()
     try:
-        cur = conn.cursor()
-        cur.execute(query)
+        cur = conn.cursor(cursor_factory=RealDictCursor)
+        cur.execute(query, params)
         rows = cur.fetchall()
         return rows
     finally:
