@@ -12,7 +12,7 @@ CONTACT_LIMIT = "5/minute"  # allow 5 messages per IP per minute
 
 @router.post("/subscribe-newsletter", status_code=status.HTTP_201_CREATED)
 @limiter.limit(CONTACT_LIMIT)
-async def subscribe(request: Request, payload: NewsletterSubscribePayload):
+async def subscribe_newsletter(request: Request, payload: NewsletterSubscribePayload):
     sql = """
         INSERT INTO newsletter_subscriber (email)
         VALUES (%s)
@@ -26,7 +26,7 @@ async def subscribe(request: Request, payload: NewsletterSubscribePayload):
 
 @router.post("/contact", status_code=status.HTTP_201_CREATED)
 @limiter.limit(CONTACT_LIMIT)
-async def send_contact(request: Request, payload: ContactPayload):
+async def send_contact_request(request: Request, payload: ContactPayload):
     sql = """
         INSERT INTO contact_message (full_name, email, phone_no, subject, message)
         VALUES (%s, %s, %s, %s, %s)
