@@ -17,7 +17,7 @@ def upgrade() -> None:
             first_name VARCHAR(150) NOT NULL,
             last_name VARCHAR(150) NOT NULL,
             phone_no VARCHAR(15) NOT NULL,
-            email VARCHAR(254) NOT NULL,
+            email VARCHAR(254) NOT NULL UNIQUE,
             photo VARCHAR(500),
             password VARCHAR(128),
             last_login TIMESTAMPTZ,
