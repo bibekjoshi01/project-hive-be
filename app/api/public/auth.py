@@ -27,7 +27,7 @@ from .schemas.auth import (
 )
 
 
-router = APIRouter(prefix="/auth")
+router = APIRouter(prefix="/auth-app")
 
 
 @router.post("/login", status_code=status.HTTP_200_OK, response_model=LoginResponse)

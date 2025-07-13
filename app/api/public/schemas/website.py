@@ -1,5 +1,4 @@
 from pydantic import BaseModel, EmailStr, Field
-from typing import Annotated
 
 
 class NewsletterSubscribePayload(BaseModel):

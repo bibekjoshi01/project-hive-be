@@ -5,7 +5,7 @@ from app.database import execute_query
 from app.utils.throttling import limiter
 
 
-router = APIRouter(prefix="/website")
+router = APIRouter(prefix="/website-app")
 
 CONTACT_LIMIT = "5/minute"  # allow 5 messages per IP per minute
 
