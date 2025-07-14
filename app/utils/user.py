@@ -17,7 +17,9 @@ def get_user_by_id(id: str):
     return rows[0] if rows else None
 
 
-def create_user(email: str, username: str, role="VISITOR"):
+def create_user(
+    email: str, username: str, firstname: str = "", lastname: str = "", role="VISITOR"
+):
     now = datetime.now().isoformat()
     query = f"""
     INSERT INTO "user" (
@@ -25,7 +27,7 @@ def create_user(email: str, username: str, role="VISITOR"):
         email, is_active, is_archived, date_joined, updated_at
     )
     VALUES (
-        '{uuid.uuid4()}', '{username}', '', '', '', '{role}',
+        '{uuid.uuid4()}', '{username}', '{firstname}', '', '{lastname}', '{role}',
         '{email}', TRUE, FALSE, '{now}', '{now}'
     )
     RETURNING id;

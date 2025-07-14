@@ -5,6 +5,7 @@ from fastapi import Form, UploadFile, File
 from typing import Annotated
 
 # Project Imports
+from .oauth.auth_validator import AuthTokenValidator
 from app.dependencies import get_current_user
 from app.utils._jwt import create_access_token, create_refresh_token, decode_token
 from app.utils.generators import generate_username
@@ -20,6 +21,7 @@ from app.utils.send_otp import send_otp_email
 from .schemas.auth import (
     LoginPayload,
     LoginResponse,
+    OAuthRequest,
     OTPPayload,
     ProfileResponse,
     ProfileUpdateResponse,
@@ -28,6 +30,41 @@ from .schemas.auth import (
 
 
 router = APIRouter(prefix="/auth-app")
+
+
+@router.post(
+    "/oauth",
+    status_code=status.HTTP_200_OK,
+    response_model=Tokens,
+    summary="Signin with Google/Github",
+)
+async def oauth(payload: OAuthRequest):
+    user_info = await AuthTokenValidator.validate(
+        provider=payload.third_party_app.value,
+        token=payload.auth_token,
+    )
+
+    user_id = None
+    user = get_user_by_email(user_info["email"])
+
+    if not user:
+        username = generate_username(payload.email)
+        user_id = create_user(
+            user_info["email"],
+            username,
+            user_info["first_name"],
+            user_info["last_name"],
+        )
+    else:
+        user_id = user["id"]
+
+    # JWT
+    access = create_access_token(user_id)
+    refresh = create_refresh_token(user_id)
+
+    return JSONResponse(
+        {"access_token": access, "refresh_token": refresh, "token_type": "bearer"}
+    )
 
 
 @router.post("/login", status_code=status.HTTP_200_OK, response_model=LoginResponse)

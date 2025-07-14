@@ -20,6 +20,8 @@ class Settings(BaseSettings):
     email_username: EmailStr
     email_password: str
 
+    oauth_providers: dict
+
     model_config = SettingsConfigDict(
         env_file=".env" if Path(".env").exists() else ".env.example",
         env_parse_json=True,
