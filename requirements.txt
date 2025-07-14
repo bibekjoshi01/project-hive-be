@@ -5,15 +5,18 @@ starlette==0.46.2
 uvicorn==0.34.2
 pydantic-settings==2.9.1
 SQLAlchemy==2.0.40
+email-validator==2.2.0
 python-jose==3.4.0
 passlib==1.7.4
 cryptography==44.0.3
 python-multipart==0.0.20
 bcrypt==3.2.2
 slowapi==0.1.9
-redis=6.2.0
+redis==6.2.0
 pillow==11.2.1
 requests==2.32.4
+psycopg2-binary
+alembic==1.16.2
 # Code quality
 # ------------------------------------------------------------------------------
 black==25.1.0
