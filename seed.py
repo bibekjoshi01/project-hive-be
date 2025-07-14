@@ -1,9 +1,25 @@
 import uuid
 from app.database import execute_query
 
-CATEGORY_ROWS = ["AI/ML", "Web", "Mobile", "IoT"]
-DEPARTMENT_ROWS = ["Computer Science", "Electronics", "Civil"]
-BATCH_YEARS = [2022, 2023, 2024]
+CATEGORY_ROWS = [
+    "C",
+    "C++",
+    "DSA",
+    "DBMS",
+    "Computer Graphics",
+    "Computer Networks",
+    "Minor",
+    "Major",
+]
+DEPARTMENT_ROWS = [
+    "Electronics & Computer Engineering",
+    "Automobile & Mechanical Engineering",
+    "Civil Engineering",
+    "Industrial Engineering",
+    "Architecture",
+    "Applied Sciences",
+]
+BATCH_YEARS = [2078, 2079, 2080, 2081]
 
 
 def seed_lookup_tables():
