@@ -1,7 +1,7 @@
 from fastapi import APIRouter, Request, status
 
-from .schemas.website import ContactPayload, NewsletterSubscribePayload
-from app.database import execute_query
+from .schemas.website import ContactPayload, NewsletterSubscribePayload, StatsOut
+from app.database import execute_query, perform_query
 from app.utils.throttling import limiter
 
 
@@ -43,3 +43,21 @@ async def send_contact_request(request: Request, payload: ContactPayload):
     return {
         "message": "Thank you for your message! We'll get back to you soon.",
     }
+
+
+@router.get("/stats", response_model=StatsOut)
+def get_stats():
+    """
+    Return simple aggregate counts used for dashboard cards.
+    """
+    row = perform_query(
+        """
+        SELECT
+            (SELECT COUNT(*) FROM department WHERE is_active) AS departments,
+            (SELECT COUNT(*) FROM category WHERE is_active) AS categories,
+            (SELECT COUNT(*) FROM batch_year WHERE is_active) AS batches,
+            (SELECT COUNT(*) FROM project WHERE is_active) AS projects;
+        """
+    )[0]
+
+    return StatsOut(**row)

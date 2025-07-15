@@ -7,6 +7,7 @@ from app.utils.casing import CamelBaseModel
 class CategoryResponse(CamelBaseModel):
     id: int
     name: str
+    project_count: int
 
 
 class CategoryList(CamelBaseModel):
@@ -54,3 +55,12 @@ class ProjectResponse(CamelBaseModel):
 class ProjectList(CamelBaseModel):
     count: int
     results: List[ProjectResponse]
+
+
+class ResponseOut(CamelBaseModel):
+    message: str
+
+
+class DiscussionIn(CamelBaseModel):
+    comment: str = Field(..., max_length=5000)
+    parent_id: Optional[int] = Field(None, description="ID of parent comment")

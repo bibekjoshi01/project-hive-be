@@ -1,9 +1,10 @@
 from typing import List, Optional
-from fastapi import APIRouter, Query, HTTPException, status, Path
+from fastapi import APIRouter, Depends, Query, HTTPException, status, Path
 
 # Project Imports
+from app.dependencies import get_current_user
 from app.utils.db import parse_ordering
-from app.database import perform_query
+from app.database import execute_query, perform_query
 from .schemas.project import (
     BatchYearList,
     BatchYearResponse,
@@ -11,8 +12,10 @@ from .schemas.project import (
     CategoryResponse,
     DepartmentList,
     DepartmentResponse,
+    DiscussionIn,
     ProjectList,
     ProjectResponse,
+    ResponseOut,
 )
 
 
@@ -26,12 +29,23 @@ async def list_categories(
     limit: int = Query(10, ge=1, le=100),
     offset: int = Query(0, ge=0),
 ):
-    order_sql = parse_ordering(ordering, {"id", "name"})
+    order_sql = parse_ordering(ordering, {"id", "name", "project_count"})
 
     data_sql = f"""
-        SELECT id, name, COUNT(*) OVER() AS total
-        FROM category
-        WHERE (%s IS NULL OR name ILIKE '%%' || %s || '%%') AND is_active
+        WITH c AS (
+            SELECT
+                cat.id,
+                cat.name,
+                COUNT(*) FILTER (WHERE proj.is_active) AS project_count
+            FROM category AS cat
+            LEFT JOIN project AS proj
+                   ON proj.category_id = cat.id
+            GROUP BY cat.id
+        )
+        SELECT *,
+               COUNT(*) OVER() AS total
+        FROM c
+        WHERE (%s IS NULL OR name ILIKE '%%' || %s || '%%')            
         ORDER BY {order_sql}
         LIMIT %s OFFSET %s;
     """
@@ -195,3 +209,47 @@ async def list_projects(
         results.append(ProjectResponse(**data))
 
     return {"count": rows[0]["total_count"] if rows else 0, "results": results}
+
+
+@router.patch(
+    "/projects/{project_id}/rate", response_model=ResponseOut, status_code=201
+)
+def rate_project(
+    project_id: int,
+    rating: int,
+    user=Depends(get_current_user),
+):
+    execute_query(
+        """
+        INSERT INTO project_rating (project_id, user_id, rating)
+        VALUES (%s, %s, %s)
+        ON CONFLICT (project_id, user_id)
+        DO UPDATE SET rating = EXCLUDED.rating, updated_at = now();
+        """,
+        (project_id, user["id"], rating),
+    )
+
+    return {"message": "Thank you for your feedback."}
+
+
+@router.post("/{project_id}/comments", response_model=ResponseOut, status_code=201)
+def add_comment(
+    project_id: int,
+    payload: DiscussionIn,
+    user=Depends(get_current_user),
+):
+    """
+    Add a root comment or reply (`parent_id` optional).
+    """
+    # Validate parent belongs to same project (if provided)
+    if payload.parent_id is not None:
+        parent = perform_query(
+            "SELECT project_id FROM project_discussion WHERE id = %s;",
+            (payload.parent_id,),
+        )
+        if not parent:
+            raise HTTPException(404, "Parent comment not found")
+        if parent[0]["project_id"] != project_id:
+            raise HTTPException(400, "Parent comment belongs to another project")
+
+    return {"message": "Commented Successfully."}
