@@ -20,6 +20,40 @@ DEPARTMENT_ROWS = [
     "Applied Sciences",
 ]
 BATCH_YEARS = [2078, 2079, 2080, 2081]
+PROJECT_SEEDS = [
+    (
+        "Smart Irrigation System",
+        "-",
+        "IoT-based automated irrigation controller",
+        2,
+        2,
+        1,
+        "Bachelors",
+        "Dr. A. Sharma",
+        "LoRa, ESP32, Django, React",
+        "https://github.com/example/smart-irrigation",
+        None,
+        "APPROVED",
+        1,
+        1,
+    ),
+    (
+        "Voice-controlled Wheelchair",
+        "-",
+        "Wheelchair that moves with voice commands",
+        1,
+        3,
+        1,
+        "Bachelors",
+        "Prof. B. Khadka",
+        "Arduino, Python, Speech-to-Text",
+        None,
+        None,
+        "PENDING",
+        1,
+        1,
+    ),
+]
 
 
 def seed_lookup_tables():
@@ -54,4 +88,14 @@ def seed_lookup_tables():
         + ",".join("(%s)" for _ in BATCH_YEARS)
         + " ON CONFLICT (year) DO NOTHING;",
         tuple(BATCH_YEARS),
+    )
+    execute_query(
+        "INSERT INTO project ("
+        "  title, project_details, abstract, batch_year_id, category_id, department_id, "
+        "  level, supervisor, technologies_used, github_link, "
+        "  documentation_link, status, submitted_by, approved_by"
+        ") VALUES "
+        + ",".join("(" + ",".join(["%s"] * 14) + ")" for _ in PROJECT_SEEDS)
+        + ";",
+        tuple(value for row in PROJECT_SEEDS for value in row),
     )

@@ -1,6 +1,8 @@
 from pydantic import BaseModel, EmailStr, Field
 from enum import Enum
 
+from app.utils.casing import CamelBaseModel
+
 
 class Provider(str, Enum):
     GOOGLE = "GOOGLE"
@@ -19,25 +21,25 @@ class OAuthRequest(BaseModel):
         validate_by_name = True
 
 
-class LoginPayload(BaseModel):
+class LoginPayload(CamelBaseModel):
     email: EmailStr
 
 
-class LoginResponse(BaseModel):
+class LoginResponse(CamelBaseModel):
     message: str
 
 
-class OTPPayload(LoginPayload):
+class OTPPayload(CamelBaseModel):
     otp: str = Field(min_length=6, max_length=6, pattern=r"^\d{6}$")
 
 
-class Tokens(BaseModel):
-    access_token: str = Field(alias="accessToken")
-    refresh_token: str = Field(alias="refreshToken")
-    token_type: str = Field(alias="tokenType", default="bearer")
+class Tokens(CamelBaseModel):
+    access_token: str
+    refresh_token: str
+    token_type: str
 
 
-class ProfileResponse(BaseModel):
+class ProfileResponse(CamelBaseModel):
     id: int
     uuid: str
     username: str

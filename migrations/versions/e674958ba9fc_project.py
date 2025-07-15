@@ -85,7 +85,8 @@ def upgrade() -> None:
             submitted_at TIMESTAMPTZ NOT NULL DEFAULT now(),
             approved_by BIGINT NOT NULL REFERENCES "user"(id) ON DELETE CASCADE,
             updated_at TIMESTAMPTZ NOT NULL DEFAULT now(),
-            is_active BOOLEAN NOT NULL DEFAULT TRUE
+            is_active BOOLEAN NOT NULL DEFAULT TRUE,
+            views BIGINT NOT NULL DEFAULT 0
         );
     """
     )

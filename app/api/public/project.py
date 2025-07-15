@@ -11,6 +11,8 @@ from .schemas.project import (
     CategoryResponse,
     DepartmentList,
     DepartmentResponse,
+    ProjectList,
+    ProjectResponse,
 )
 
 
@@ -125,3 +127,71 @@ async def get_batch_year(
         )
 
     return rows[0]
+
+
+@router.get("/projects", response_model=ProjectList)
+async def list_projects(
+    search: Optional[str] = Query(None, description="Search project title ILIKE"),
+    category_id: Optional[int] = Query(None, gt=0),
+    department_id: Optional[int] = Query(None, gt=0),
+    batch_year_id: Optional[int] = Query(None, gt=0),
+    ordering: str = Query(
+        "id", description="Prefix with '-' for DESC. e.g. -submitted_at, rating"
+    ),
+    limit: int = Query(10, ge=1, le=100),
+    offset: int = Query(0, ge=0),
+):
+    order_sql = parse_ordering(
+        ordering,
+        {
+            "id": "p.id",
+            "title": "p.title",
+            "submitted_at": "p.submitted_at",
+            "rating": "avg_rating",
+        },
+    )
+
+    sql = f"""
+        WITH filtered AS (
+            SELECT
+                p.*,
+                COALESCE(AVG(pr.rating)::numeric(3,2), 0) AS avg_rating,
+                COUNT(*) OVER() AS total_count
+            FROM project AS p
+            LEFT JOIN project_rating AS pr ON pr.project_id = p.id
+            WHERE p.is_active
+              AND (%s IS NULL OR p.title ILIKE '%%' || %s || '%%')
+              AND (%s IS NULL OR p.category_id   = %s)
+              AND (%s IS NULL OR p.department_id = %s)
+              AND (%s IS NULL OR p.batch_year_id = %s)
+            GROUP BY p.id
+        )
+        SELECT *
+        FROM filtered
+        ORDER BY {order_sql}
+        LIMIT %s OFFSET %s;
+    """
+
+    params = (
+        search,
+        search,
+        category_id,
+        category_id,
+        department_id,
+        department_id,
+        batch_year_id,
+        batch_year_id,
+        limit,
+        offset,
+    )
+
+    rows = perform_query(sql, params)
+
+    results: List[ProjectResponse] = []
+    for r in rows:
+        data = dict(r)
+        data["submitted_at"] = r["submitted_at"].isoformat()
+        data["rating_average"] = float(r["avg_rating"])
+        results.append(ProjectResponse(**data))
+
+    return {"count": rows[0]["total_count"] if rows else 0, "results": results}
