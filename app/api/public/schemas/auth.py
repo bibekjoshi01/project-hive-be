@@ -1,3 +1,4 @@
+from typing import Optional
 from pydantic import BaseModel, EmailStr, Field
 from enum import Enum
 
@@ -25,18 +26,22 @@ class LoginPayload(CamelBaseModel):
     email: EmailStr
 
 
-class LoginResponse(CamelBaseModel):
+class EmailLoginResponse(CamelBaseModel):
     message: str
 
 
 class OTPPayload(CamelBaseModel):
+    email: EmailStr
     otp: str = Field(min_length=6, max_length=6, pattern=r"^\d{6}$")
 
 
-class Tokens(CamelBaseModel):
+class LoginResponse(CamelBaseModel):
     access_token: str
     refresh_token: str
     token_type: str
+    full_name: str
+    role: str
+    photo: Optional[str]
 
 
 class ProfileResponse(CamelBaseModel):

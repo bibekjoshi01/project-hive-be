@@ -4,6 +4,8 @@ from jose import JWTError
 from fastapi import Form, UploadFile, File
 from typing import Annotated
 
+from app.database import get_connection
+
 # Project Imports
 from .oauth.auth_validator import AuthTokenValidator
 from app.dependencies import get_current_user
@@ -19,13 +21,13 @@ from app.utils.user import (
 from app.utils.file_handlers import get_full_url, save_upload_file
 from app.utils.send_otp import send_otp_email
 from .schemas.auth import (
+    EmailLoginResponse,
     LoginPayload,
     LoginResponse,
     OAuthRequest,
     OTPPayload,
     ProfileResponse,
     ProfileUpdateResponse,
-    Tokens,
 )
 
 
@@ -35,7 +37,7 @@ router = APIRouter(prefix="/auth-app")
 @router.post(
     "/oauth",
     status_code=status.HTTP_200_OK,
-    response_model=Tokens,
+    response_model=LoginResponse,
     summary="Signin with Google/Github",
 )
 async def oauth(payload: OAuthRequest):
@@ -67,17 +69,21 @@ async def oauth(payload: OAuthRequest):
     )
 
 
-@router.post("/login", status_code=status.HTTP_200_OK, response_model=LoginResponse)
+@router.post(
+    "/login", status_code=status.HTTP_200_OK, response_model=EmailLoginResponse
+)
 async def login(payload: LoginPayload):
+    conn = get_connection()
+
     user = get_user_by_email(payload.email)
     if user:
         user_id = user["id"]
     else:
         username = generate_username(payload.email)
-        user_id = create_user(payload.email, username)
+        user_id = create_user(payload.email, username, conn=conn)
 
     try:
-        send_otp_email(payload.email, user_id)
+        send_otp_email(payload.email, user_id, conn=conn)
     except Exception as e:
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST, detail=f"Failed to send OTP: {e}"
@@ -86,8 +92,8 @@ async def login(payload: LoginPayload):
     return JSONResponse({"message": "OTP Sent to your mail"})
 
 
-@router.post("/verify-otp", response_model=Tokens)
-async def verify(payload: OTPPayload):
+@router.post("/verify-otp", response_model=LoginResponse, status_code=200)
+async def verify(request: Request, payload: OTPPayload):
     user = get_user_by_email(payload.email)
 
     if not user:
@@ -104,12 +110,20 @@ async def verify(payload: OTPPayload):
     access = create_access_token(str(user["id"]))
     refresh = create_refresh_token(str(user["id"]))
 
-    return JSONResponse(
-        {"access_token": access, "refresh_token": refresh, "token_type": "bearer"}
-    )
+    if user.get("photo"):
+        user["photo"] = get_full_url(request, user["photo"])
+
+    return {
+        "access_token": access,
+        "refresh_token": refresh,
+        "token_type": "bearer",
+        "full_name": user["full_name"],
+        "role": "VISITOR",
+        "photo": user["photo"],
+    }
 
 
-@router.post("/refresh", response_model=Tokens)
+@router.post("/refresh", response_model=None)
 async def refresh(request: Request):
     token = request.cookies.get("refresh_token")
 
@@ -126,7 +140,11 @@ async def refresh(request: Request):
     user_id = payload["sub"]
     access = create_access_token(user_id)
     return Response(
-        {"access_token": access, "refresh_token": token, "token_type": "bearer"}
+        {
+            "access_token": access,
+            "refresh_token": token,
+            "token_type": "bearer",
+        }
     )
 
 

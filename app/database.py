@@ -20,8 +20,12 @@ def put_connection(conn):
     db_pool.putconn(conn)
 
 
-def perform_query(query: str, params: tuple = ()):
-    conn = get_connection()
+def perform_query(query: str, params: tuple = (), conn=None):
+    close_after = False
+    if conn is None:
+        conn = get_connection()
+        close_after = True
+
     try:
         cur = conn.cursor(cursor_factory=RealDictCursor)
         cur.execute(query, params)
@@ -29,10 +33,13 @@ def perform_query(query: str, params: tuple = ()):
         return rows
     finally:
         cur.close()
-        put_connection(conn)
+        if close_after:
+            put_connection(conn)
 
 
-def execute_query(query: str, params: Optional[Tuple] = None) -> Optional[Any]:
+def execute_query(
+    query: str, params: Optional[Tuple] = None, conn=None
+) -> Optional[Any]:
     """
     Execute an INSERT/UPDATE/DELETE query.
 
@@ -46,22 +53,22 @@ def execute_query(query: str, params: Optional[Tuple] = None) -> Optional[Any]:
     Returns:
         Optional[Any]: Returned value from RETURNING clause or None.
     """
-    conn = get_connection()
-    try:
-        cur = conn.cursor()
-        if params:
-            cur.execute(query, params)
-        else:
-            cur.execute(query)
+    close_after = False
+    if conn is None:
+        conn = get_connection()
+        close_after = True
 
+    try:
+        cur = conn.cursor(cursor_factory=RealDictCursor)
+        cur.execute(query, params or ())
         result = None
         if cur.description:
             row = cur.fetchone()
             if row:
-                result = row[0]  
-
+                result = row
         conn.commit()
         return result
     finally:
         cur.close()
-        put_connection(conn)
+        if close_after:
+            put_connection(conn)

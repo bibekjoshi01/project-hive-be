@@ -13,7 +13,7 @@ EMAIL_USERNAME = settings.email_username
 EMAIL_PASSWORD = settings.email_password
 
 
-def insert_user_account_verification(user_id: int, otp: str):
+def insert_user_account_verification(user_id: int, otp: str, conn=None):
     now = datetime.now()
     query = f"""
     INSERT INTO user_verification (
@@ -23,15 +23,15 @@ def insert_user_account_verification(user_id: int, otp: str):
         {user_id}, '{otp}', '{now.isoformat()}'
     );
     """
-    execute_query(query)
+    execute_query(query=query, conn=conn)
 
 
-def send_otp_email(recipient_email: str, user_id: int):
+def send_otp_email(recipient_email: str, user_id: int, conn=None):
     subject = "Your OTP Code"
     sender_email = EMAIL_USERNAME
     otp = str(random.randint(100000, 999999))
 
-    insert_user_account_verification(user_id, otp)
+    insert_user_account_verification(user_id, otp, conn)
     message = MIMEMultipart("alternative")
     message["Subject"] = subject
     message["From"] = sender_email

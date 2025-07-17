@@ -6,7 +6,15 @@ from app.database import execute_query, perform_query
 
 
 def get_user_by_email(email: str):
-    query = f"SELECT id, username FROM \"user\" WHERE email = '{email}' AND NOT is_archived;"
+    query = f"""
+    SELECT 
+        id, 
+        username, 
+        first_name || ' ' || last_name AS full_name, 
+        photo 
+    FROM "user" 
+    WHERE email = '{email}' AND NOT is_archived;
+    """
     rows = perform_query(query)
     return rows[0] if rows else None
 
@@ -18,21 +26,37 @@ def get_user_by_id(id: str):
 
 
 def create_user(
-    email: str, username: str, firstname: str = "", lastname: str = "", role="VISITOR"
+    email: str,
+    username: str,
+    firstname: str = "",
+    lastname: str = "",
+    role="VISITOR",
+    conn=None,
 ):
     now = datetime.now().isoformat()
-    query = f"""
+    query = """
     INSERT INTO "user" (
         uuid, username, first_name, last_name, phone_no, user_role,
         email, is_active, is_archived, date_joined, updated_at
     )
     VALUES (
-        '{uuid.uuid4()}', '{username}', '{firstname}', '', '{lastname}', '{role}',
-        '{email}', TRUE, FALSE, '{now}', '{now}'
+        %s, %s, %s, %s, %s, %s,
+        %s, TRUE, FALSE, %s, %s
     )
     RETURNING id;
     """
-    return execute_query(query)
+    params = (
+        str(uuid.uuid4()),
+        username,
+        firstname,
+        lastname,
+        "",
+        role,
+        email,
+        now,
+        now,
+    )
+    return execute_query(query, params, conn)
 
 
 def update_user_profile(set_clauses: List, params: List):
