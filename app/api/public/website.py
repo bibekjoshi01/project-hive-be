@@ -1,4 +1,8 @@
-from fastapi import APIRouter, Request, status
+from typing import List, Optional
+from fastapi import APIRouter, Query, Request, status
+
+from app.api.public.schemas.project import CategoryList, CategoryResponse
+from app.utils.db import parse_ordering
 
 from .schemas.website import ContactPayload, NewsletterSubscribePayload, StatsOut
 from app.database import execute_query, perform_query
@@ -61,3 +65,37 @@ def get_stats():
     )[0]
 
     return StatsOut(**row)
+
+
+@router.get("/categories", response_model=CategoryList)
+async def list_categories(
+    search: Optional[str] = Query(None, description="Filter by name icontains"),
+    ordering: str = Query("id", description="e.g. id, -name"),
+    limit: int = Query(10, ge=1, le=100),
+    offset: int = Query(0, ge=0),
+):
+    order_sql = parse_ordering(ordering, {"id", "name", "project_count"})
+
+    data_sql = f"""
+        WITH c AS (
+            SELECT
+                cat.id,
+                cat.name,
+                COUNT(*) FILTER (WHERE proj.is_active) AS project_count
+            FROM category AS cat
+            LEFT JOIN project AS proj
+                   ON proj.category_id = cat.id
+            GROUP BY cat.id
+        )
+        SELECT *,
+               COUNT(*) OVER() AS total
+        FROM c
+        WHERE (%s IS NULL OR name ILIKE '%%' || %s || '%%')            
+        ORDER BY {order_sql}
+        LIMIT %s OFFSET %s;
+    """
+    rows = perform_query(data_sql, (search, search, limit, offset))
+
+    results: List[CategoryResponse] = [CategoryResponse(**row) for row in rows]
+
+    return {"count": rows[0]["total"] if rows else 0, "results": results}

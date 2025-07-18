@@ -40,33 +40,39 @@ router = APIRouter(prefix="/auth-app")
     response_model=LoginResponse,
     summary="Signin with Google/Github",
 )
-async def oauth(payload: OAuthRequest):
-    user_info = await AuthTokenValidator.validate(
+async def oauth(request: Request, payload: OAuthRequest):
+    user_info = AuthTokenValidator.validate(
         provider=payload.third_party_app.value,
         token=payload.auth_token,
     )
 
-    user_id = None
     user = get_user_by_email(user_info["email"])
 
     if not user:
-        username = generate_username(payload.email)
-        user_id = create_user(
+        username = generate_username(user_info["email"])
+        create_user(
             user_info["email"],
             username,
             user_info["first_name"],
             user_info["last_name"],
         )
-    else:
-        user_id = user["id"]
+        user = get_user_by_email(user_info["email"])
 
     # JWT
-    access = create_access_token(user_id)
-    refresh = create_refresh_token(user_id)
+    access = create_access_token(str(user["id"]))
+    refresh = create_refresh_token(str(user["id"]))
 
-    return JSONResponse(
-        {"access_token": access, "refresh_token": refresh, "token_type": "bearer"}
-    )
+    if user.get("photo"):
+        user["photo"] = get_full_url(request, user["photo"])
+
+    return {
+        "access_token": access,
+        "refresh_token": refresh,
+        "token_type": "bearer",
+        "full_name": user["full_name"],
+        "role": "VISITOR",
+        "photo": user["photo"],
+    }
 
 
 @router.post(
@@ -124,16 +130,15 @@ async def verify(request: Request, payload: OTPPayload):
 
 
 @router.post("/refresh", response_model=None)
-async def refresh(request: Request):
-    token = request.cookies.get("refresh_token")
+async def refresh(request: Request, refresh: str):
 
-    if not token:
+    if not refresh:
         raise HTTPException(
             status.HTTP_401_UNAUTHORIZED, detail="Missing refresh token"
         )
 
     try:
-        payload = decode_token(token)
+        payload = decode_token(refresh)
     except JWTError:
         raise HTTPException(status.HTTP_401_UNAUTHORIZED, detail="Invalid token")
 
@@ -142,7 +147,7 @@ async def refresh(request: Request):
     return Response(
         {
             "access_token": access,
-            "refresh_token": token,
+            "refresh_token": refresh,
             "token_type": "bearer",
         }
     )
