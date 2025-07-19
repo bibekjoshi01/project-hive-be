@@ -1,4 +1,4 @@
-from typing import Optional
+from typing import Optional, List
 from pydantic import BaseModel, EmailStr, Field
 from enum import Enum
 
@@ -60,3 +60,16 @@ class ProfileResponse(CamelBaseModel):
 
 class ProfileUpdateResponse(BaseModel):
     message: str
+
+
+class MyProjectOut(CamelBaseModel):
+    id: int
+    title: str
+    status: str
+    submitted_at: str
+    category_name: Optional[str] = None
+
+
+class MyProjectList(CamelBaseModel):
+    count: int
+    results: List[MyProjectOut]

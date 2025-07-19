@@ -4,9 +4,8 @@ from jose import JWTError
 from fastapi import Form, UploadFile, File
 from typing import Annotated
 
-from app.database import get_connection
-
 # Project Imports
+from app.database import get_connection, perform_query
 from .oauth.auth_validator import AuthTokenValidator
 from app.dependencies import get_current_user
 from app.utils._jwt import create_access_token, create_refresh_token, decode_token
@@ -24,6 +23,8 @@ from .schemas.auth import (
     EmailLoginResponse,
     LoginPayload,
     LoginResponse,
+    MyProjectList,
+    MyProjectOut,
     OAuthRequest,
     OTPPayload,
     ProfileResponse,
@@ -204,3 +205,37 @@ async def update_profile(
     update_user_profile(set_clauses, params)
 
     return JSONResponse({"message": "Profile updated successfully"})
+
+
+@router.get("/my-projects", response_model=MyProjectList)
+def get_user_projects(
+    current_user: dict = Depends(get_current_user),
+):
+    sql = """
+        WITH filtered AS (
+            SELECT
+                p.id,
+                p.title,
+                p.status,
+                p.submitted_at,
+                c.name AS category_name,
+                COUNT(*) OVER() AS total_count
+            FROM project AS p
+            LEFT JOIN category AS c ON p.category_id = c.id
+            WHERE p.is_active AND p.submitted_by = %(submitted_by)s
+        )
+        SELECT * FROM filtered
+        ORDER BY submitted_at DESC;
+    """
+
+    rows = perform_query(sql, {"submitted_by": current_user["id"]})
+    results: MyProjectList = []
+
+    for r in rows:
+        data = dict(r)
+        data["id"] = int(data["id"])
+        data["submitted_at"] = data["submitted_at"].isoformat()
+
+        results.append(MyProjectOut(**data))
+
+    return {"count": rows[0]["total_count"] if rows else 0, "results": results}

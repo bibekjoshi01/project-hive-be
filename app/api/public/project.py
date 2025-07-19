@@ -161,7 +161,7 @@ async def list_projects(
             "id": "p.id",
             "title": "p.title",
             "submitted_at": "p.submitted_at",
-            "rating": "avg_rating",
+            "avg_rating": "avg_rating",
         },
     )
 
@@ -169,19 +169,29 @@ async def list_projects(
         WITH filtered AS (
             SELECT
                 p.*,
-                COALESCE(AVG(pr.rating)::numeric(3,2), 0) AS avg_rating,
+                c.id AS category_id,
+                c.name AS category_name,
+                d.id AS department_id,
+                d.name AS department_name,
+                b.id AS batch_year_id,
+                b.year AS batch_year_year,
+                u.first_name || ' ' || u.last_name AS submitted_by_full_name,
+                COALESCE(AVG(pr.rating)::numeric(3,2), 5.0) AS avg_rating,
                 COUNT(*) OVER() AS total_count
             FROM project AS p
             LEFT JOIN project_rating AS pr ON pr.project_id = p.id
-            WHERE p.is_active
-              AND (%s IS NULL OR p.title ILIKE '%%' || %s || '%%')
-              AND (%s IS NULL OR p.category_id   = %s)
-              AND (%s IS NULL OR p.department_id = %s)
-              AND (%s IS NULL OR p.batch_year_id = %s)
-            GROUP BY p.id
+            JOIN category AS c ON p.category_id = c.id
+            JOIN department AS d ON p.department_id = d.id
+            JOIN batch_year AS b ON p.batch_year_id = b.id
+            JOIN "user" AS u ON p.submitted_by = u.id
+            WHERE p.is_active AND p.status = 'APPROVED'
+            AND (%s IS NULL OR p.title ILIKE '%%' || %s || '%%')
+            AND (%s IS NULL OR p.category_id   = %s)
+            AND (%s IS NULL OR p.department_id = %s)
+            AND (%s IS NULL OR p.batch_year_id = %s)
+            GROUP BY p.id, c.id, d.id, b.id, u.id
         )
-        SELECT *
-        FROM filtered
+        SELECT * FROM filtered
         ORDER BY {order_sql}
         LIMIT %s OFFSET %s;
     """
@@ -206,6 +216,23 @@ async def list_projects(
         data = dict(r)
         data["submitted_at"] = r["submitted_at"].isoformat()
         data["rating_average"] = float(r["avg_rating"])
+
+        data["category"] = {"id": r["category_id"], "name": r["category_name"]}
+        data["department"] = {"id": r["department_id"], "name": r["department_name"]}
+        data["batch_year"] = {"id": r["batch_year_id"], "year": r["batch_year_year"]}
+
+        # Remove individual FK fields
+        for fk in [
+            "category_id",
+            "category_name",
+            "department_id",
+            "department_name",
+            "batch_year_id",
+            "batch_year_year",
+            "avg_rating",
+        ]:
+            data.pop(fk, None)
+
         results.append(ProjectResponse(**data))
 
     return {"count": rows[0]["total_count"] if rows else 0, "results": results}

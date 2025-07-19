@@ -1,5 +1,6 @@
 from pydantic import Field
 from typing import List, Optional
+import random
 
 from app.utils.casing import CamelBaseModel
 
@@ -35,6 +36,21 @@ class BatchYearList(CamelBaseModel):
     results: List[BatchYearResponse]
 
 
+class CategoryOut(CamelBaseModel):
+    id: int
+    name: str
+
+
+class DepartmentOut(CamelBaseModel):
+    id: int
+    name: str
+
+
+class BatchYearOut(CamelBaseModel):
+    id: int
+    year: int
+
+
 class ProjectResponse(CamelBaseModel):
     id: int
     title: str
@@ -46,10 +62,12 @@ class ProjectResponse(CamelBaseModel):
     documentation_link: Optional[str]
     status: str
     submitted_at: str
-    category_id: int
-    department_id: int
-    batch_year_id: int
-    rating_average: float = Field(..., example=4.2)
+    submitted_by_full_name: str
+    category: CategoryOut
+    department: DepartmentOut
+    batch_year: BatchYearOut
+    rating_average: float = Field(default=5.0)
+    views: int = Field(default_factory=lambda: random.randint(0, 500))
 
 
 class ProjectList(CamelBaseModel):
