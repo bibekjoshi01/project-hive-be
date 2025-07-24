@@ -1,5 +1,6 @@
 from typing import List, Optional
 from fastapi import APIRouter, Depends, Query, HTTPException, status, Path
+from psycopg2 import IntegrityError, DataError
 
 # Project Imports
 from app.dependencies import get_current_user
@@ -16,6 +17,7 @@ from .schemas.project import (
     ProjectList,
     ProjectResponse,
     ResponseOut,
+    SubmitProjectPayload,
 )
 
 
@@ -238,6 +240,52 @@ async def list_projects(
     return {"count": rows[0]["total_count"] if rows else 0, "results": results}
 
 
+@router.post("/submit-project", response_model=ResponseOut, status_code=201)
+async def submit_project(payload: SubmitProjectPayload, user=Depends(get_current_user)):
+    try:
+        execute_query(
+            """
+            INSERT INTO project (
+                title, abstract, batch_year_id, category_id, 
+                department_id, level, supervisor, project_details, 
+                technologies_used, github_link, documentation_link, 
+                submitted_by, submitted_at, approved_by
+            )
+            VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, NOW(), %s)
+            """,
+            (
+                payload.title,
+                payload.abstract,
+                payload.batch_year,
+                payload.category,
+                payload.department,
+                payload.level.value,
+                payload.supervisor or "Not Assigned",
+                payload.project_details,
+                payload.technologies_used,
+                str(payload.github_link),
+                str(payload.documentation_link),
+                user["id"],
+                user["id"],
+            ),
+        )
+    except IntegrityError as e:
+        # Handle foreign key violation
+        raise HTTPException(
+            status_code=400,
+            detail="Invalid foreign key: Please check batch_year, category, or department.",
+        )
+    except DataError as e:
+        raise HTTPException(status_code=400, detail=f"Invalid data: {e.pgerror}")
+    except Exception as e:
+        raise HTTPException(
+            status_code=500,
+            detail="An unexpected error occurred while submitting the project.",
+        )
+    
+    return ResponseOut(message="Project submitted successfully")
+
+
 @router.patch(
     "/projects/{project_id}/rate", response_model=ResponseOut, status_code=201
 )
@@ -246,17 +294,23 @@ def rate_project(
     rating: int,
     user=Depends(get_current_user),
 ):
-    execute_query(
-        """
-        INSERT INTO project_rating (project_id, user_id, rating)
-        VALUES (%s, %s, %s)
-        ON CONFLICT (project_id, user_id)
-        DO UPDATE SET rating = EXCLUDED.rating, updated_at = now();
-        """,
-        (project_id, user["id"], rating),
-    )
+    try:
+        execute_query(
+            """
+            INSERT INTO project_rating (project_id, user_id, rating)
+            VALUES (%s, %s, %s)
+            ON CONFLICT (project_id, user_id)
+            DO UPDATE SET rating = EXCLUDED.rating, updated_at = now();
+            """,
+            (project_id, user["id"], rating),
+        )
 
-    return {"message": "Thank you for your feedback."}
+        return {"message": "Thank you for your feedback."}
+    except Exception as e:
+        raise HTTPException(
+            status_code=500,
+            detail="An unexpected error occurred while submitting the project.",
+        )
 
 
 @router.post("/{project_id}/comments", response_model=ResponseOut, status_code=201)

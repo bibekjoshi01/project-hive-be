@@ -70,7 +70,7 @@ def upgrade() -> None:
         CREATE TABLE IF NOT EXISTS project (
             id BIGSERIAL PRIMARY KEY,
             title VARCHAR(255) NOT NULL,
-            abstract VARCHAR(300) NOT NULL,
+            abstract VARCHAR(500) NOT NULL,
             batch_year_id BIGINT NOT NULL REFERENCES batch_year(id) ON DELETE CASCADE,
             category_id BIGINT NOT NULL REFERENCES category(id) ON DELETE CASCADE,
             department_id BIGINT NOT NULL REFERENCES department(id) ON DELETE CASCADE,

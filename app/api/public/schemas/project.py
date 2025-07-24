@@ -1,6 +1,7 @@
-from pydantic import Field
+from pydantic import Field, HttpUrl
 from typing import List, Optional
 import random
+from enum import Enum
 
 from app.utils.casing import CamelBaseModel
 
@@ -82,3 +83,34 @@ class ResponseOut(CamelBaseModel):
 class DiscussionIn(CamelBaseModel):
     comment: str = Field(..., max_length=5000)
     parent_id: Optional[int] = Field(None, description="ID of parent comment")
+
+
+class LevelEnum(str, Enum):
+    Masters = "Masters"
+    Bachelors = "Bachelors"
+    PHD = "PHD"
+
+
+class TeamMemberPayload(CamelBaseModel):
+    full_name: str
+    roll_no: str
+    photo: Optional[str]
+
+
+class ProjectFilePayload(CamelBaseModel):
+    file_type: str
+    file: str
+
+
+class SubmitProjectPayload(CamelBaseModel):
+    title: str
+    abstract: str
+    batch_year: int
+    category: int
+    department: int
+    level: LevelEnum
+    supervisor: Optional[str]
+    project_details: str
+    technologies_used: str
+    github_link: HttpUrl
+    documentation_link: HttpUrl
