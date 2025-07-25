@@ -114,3 +114,38 @@ class SubmitProjectPayload(CamelBaseModel):
     technologies_used: str
     github_link: HttpUrl
     documentation_link: HttpUrl
+
+
+class ProjectTeamMemberOut(CamelBaseModel):
+    id: int
+    full_name: str
+    roll_no: str
+    photo: Optional[str]
+
+
+class ProjectFileOut(CamelBaseModel):
+    id: int
+    file_type: str
+    file: str
+
+
+class ProjectRetrieveResponse(CamelBaseModel):
+    id: int
+    title: str
+    abstract: str
+    level: str
+    supervisor: str
+    technologies_used: List[str]
+    github_links: List[str]
+    documentation_link: Optional[str]
+    project_details: Optional[str]
+    status: str
+    submitted_at: str
+    submitted_by_full_name: str
+    category: CategoryOut
+    department: DepartmentOut
+    batch_year: BatchYearOut
+    rating_average: float = Field(default=5.0)
+    views: int = Field(default_factory=lambda: random.randint(0, 500))
+    team_members: List[ProjectTeamMemberOut]
+    files: List[ProjectFileOut]

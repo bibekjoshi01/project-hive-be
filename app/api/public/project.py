@@ -16,6 +16,7 @@ from .schemas.project import (
     DiscussionIn,
     ProjectList,
     ProjectResponse,
+    ProjectRetrieveResponse,
     ResponseOut,
     SubmitProjectPayload,
 )
@@ -151,6 +152,7 @@ async def list_projects(
     category_id: Optional[int] = Query(None, gt=0),
     department_id: Optional[int] = Query(None, gt=0),
     batch_year_id: Optional[int] = Query(None, gt=0),
+    level: Optional[str] = Query(None),
     ordering: str = Query(
         "id", description="Prefix with '-' for DESC. e.g. -submitted_at, rating"
     ),
@@ -189,6 +191,7 @@ async def list_projects(
             WHERE p.is_active AND p.status = 'APPROVED'
             AND (%s IS NULL OR p.title ILIKE '%%' || %s || '%%')
             AND (%s IS NULL OR p.category_id   = %s)
+            AND (%s IS NULL OR p.level   = %s)
             AND (%s IS NULL OR p.department_id = %s)
             AND (%s IS NULL OR p.batch_year_id = %s)
             GROUP BY p.id, c.id, d.id, b.id, u.id
@@ -203,6 +206,8 @@ async def list_projects(
         search,
         category_id,
         category_id,
+        level,
+        level,
         department_id,
         department_id,
         batch_year_id,
@@ -238,6 +243,117 @@ async def list_projects(
         results.append(ProjectResponse(**data))
 
     return {"count": rows[0]["total_count"] if rows else 0, "results": results}
+
+
+@router.get("/projects/{project_id}", response_model=ProjectRetrieveResponse)
+async def get_project(
+    project_id: int = Path(..., gt=0, description="Numeric primary key of project id"),
+):
+    sql = """
+        WITH filtered AS (
+            SELECT
+                p.id,
+                p.title,
+                p.abstract,
+                p.level,
+                p.supervisor,
+                p.technologies_used,
+                p.github_link,
+                p.documentation_link,
+                p.project_details,
+                p.status,
+                p.submitted_at,
+                u.first_name || ' ' || u.last_name AS submitted_by_full_name,
+                c.id AS category_id,
+                c.name AS category_name,
+                d.id AS department_id,
+                d.name AS department_name,
+                b.id AS batch_year_id,
+                b.year AS batch_year_year,
+                COALESCE(AVG(pr.rating)::numeric(3,2), 5.0) AS avg_rating
+            FROM project AS p
+            LEFT JOIN project_rating AS pr ON pr.project_id = p.id
+            JOIN category AS c ON p.category_id = c.id
+            JOIN department AS d ON p.department_id = d.id
+            JOIN batch_year AS b ON p.batch_year_id = b.id
+            JOIN "user" AS u ON p.submitted_by = u.id
+            WHERE p.is_active AND p.status = 'APPROVED' AND p.id = %s
+            GROUP BY p.id, c.id, d.id, b.id, u.id
+        )
+        SELECT * FROM filtered;
+    """
+
+    project_rows = perform_query(sql, (project_id,))
+    if not project_rows:
+        raise HTTPException(status_code=404, detail="Project not found")
+
+    project_row = project_rows[0]
+
+    team_sql = "SELECT id, full_name, roll_no, photo FROM project_team_member WHERE project_id = %s;"
+    files_sql = "SELECT id, file_type, file FROM project_files WHERE project_id = %s;"
+
+    team_members = perform_query(team_sql, (project_id,))
+    files = perform_query(files_sql, (project_id,))
+
+    # Convert comma-separated strings into arrays
+    technologies = (
+        [tech.strip() for tech in project_row["technologies_used"].split(",")]
+        if project_row["technologies_used"]
+        else []
+    )
+    github_links = (
+        [link.strip() for link in project_row["github_link"].split(",")]
+        if project_row["github_link"]
+        else []
+    )
+
+    data = {
+        "id": project_row["id"],
+        "title": project_row["title"],
+        "abstract": project_row["abstract"],
+        "level": project_row["level"],
+        "supervisor": project_row["supervisor"],
+        "technologies_used": technologies,
+        "github_links": github_links,
+        "documentation_link": project_row["documentation_link"],
+        "project_details": project_row["project_details"],
+        "status": project_row["status"],
+        "submitted_at": (
+            project_row["submitted_at"].isoformat()
+            if hasattr(project_row["submitted_at"], "isoformat")
+            else project_row["submitted_at"]
+        ),
+        "submitted_by_full_name": project_row["submitted_by_full_name"],
+        "category": {
+            "id": project_row["category_id"],
+            "name": project_row["category_name"],
+        },
+        "department": {
+            "id": project_row["department_id"],
+            "name": project_row["department_name"],
+        },
+        "batch_year": {
+            "id": project_row["batch_year_id"],
+            "year": project_row["batch_year_year"],
+        },
+        "rating_average": float(project_row["avg_rating"]),
+        # "views": project_row["views"],
+        "team_members": [
+            {
+                "id": t["id"],
+                "full_name": t["full_name"],
+                "roll_no": t["roll_no"],
+                "photo": t["photo"],
+            }
+            for t in team_members
+        ],
+        "files": [
+            {"id": f["id"], "file_type": f["file_type"], "file": f["file"]}
+            for f in files
+        ],
+    }
+
+    return data
 
 
 @router.post("/submit-project", response_model=ResponseOut, status_code=201)
@@ -282,7 +398,7 @@ async def submit_project(payload: SubmitProjectPayload, user=Depends(get_current
             status_code=500,
             detail="An unexpected error occurred while submitting the project.",
         )
-    
+
     return ResponseOut(message="Project submitted successfully")
 
 

@@ -14,6 +14,7 @@ def upgrade() -> None:
             id BIGSERIAL PRIMARY KEY,
             uuid UUID NOT NULL UNIQUE,
             username VARCHAR(150) NOT NULL UNIQUE,
+            bi0 VARCHAR(255),
             first_name VARCHAR(150) NOT NULL,
             last_name VARCHAR(150) NOT NULL,
             phone_no VARCHAR(15) NOT NULL,
