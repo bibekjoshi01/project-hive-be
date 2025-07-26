@@ -70,6 +70,7 @@ def upgrade() -> None:
         CREATE TABLE IF NOT EXISTS project (
             id BIGSERIAL PRIMARY KEY,
             title VARCHAR(255) NOT NULL,
+            slug VARCHAR(265) UNIQUE NOT NULL,  
             abstract VARCHAR(500) NOT NULL,
             batch_year_id BIGINT NOT NULL REFERENCES batch_year(id) ON DELETE CASCADE,
             category_id BIGINT NOT NULL REFERENCES category(id) ON DELETE CASCADE,
@@ -78,8 +79,8 @@ def upgrade() -> None:
             supervisor VARCHAR(255) NOT NULL,
             project_details TEXT NOT NULL,
             technologies_used VARCHAR(1000) NOT NULL,
-            github_link VARCHAR(1000),
-            documentation_link VARCHAR(1000),
+            github_link VARCHAR(5000),
+            documentation_link VARCHAR(5000),
             status project_status_enum NOT NULL DEFAULT 'PENDING',
             submitted_by BIGINT NOT NULL REFERENCES "user"(id) ON DELETE CASCADE,
             submitted_at TIMESTAMPTZ NOT NULL DEFAULT now(),
@@ -97,7 +98,7 @@ def upgrade() -> None:
         CREATE TABLE IF NOT EXISTS project_team_member (
             id BIGSERIAL PRIMARY KEY,
             project_id BIGINT NOT NULL REFERENCES project(id) ON DELETE CASCADE,
-            full_name VARCHAR(255) NOT NULL,
+            full_name VARCHAR(1000) NOT NULL,
             roll_no VARCHAR(50) NOT NULL,
             photo VARCHAR(255)
         );
@@ -110,7 +111,7 @@ def upgrade() -> None:
         CREATE TABLE IF NOT EXISTS project_files (
             id BIGSERIAL PRIMARY KEY,
             project_id BIGINT NOT NULL REFERENCES project(id) ON DELETE CASCADE,
-            file_type VARCHAR(100) NOT NULL,
+            file_type VARCHAR(1000) NOT NULL,
             file VARCHAR(255) NOT NULL
         );
     """

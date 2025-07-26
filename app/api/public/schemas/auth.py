@@ -49,6 +49,7 @@ class ProfileResponse(CamelBaseModel):
     uuid: str
     username: str
     email: str
+    bio: Optional[str]
     first_name: str
     last_name: str
     phone_no: str
@@ -65,6 +66,7 @@ class ProfileUpdateResponse(BaseModel):
 class MyProjectOut(CamelBaseModel):
     id: int
     title: str
+    slug: str
     status: str
     submitted_at: str
     category_name: Optional[str] = None

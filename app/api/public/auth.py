@@ -163,6 +163,7 @@ async def profile(request: Request, current_user: dict = Depends(get_current_use
             status_code=status.HTTP_404_NOT_FOUND, detail="User not found"
         )
     user_data["date_joined"] = user_data["date_joined"].isoformat()
+    user_data["bio"] = user_data.get("bi0", "")
 
     if user_data.get("photo"):
         user_data["photo"] = get_full_url(request, user_data["photo"])
@@ -172,9 +173,10 @@ async def profile(request: Request, current_user: dict = Depends(get_current_use
 
 @router.patch("/profile/update", response_model=ProfileUpdateResponse)
 async def update_profile(
-    first_name: Annotated[str | None, Form()] = None,
-    last_name: Annotated[str | None, Form()] = None,
-    phone_no: Annotated[str | None, Form()] = None,
+    firstName: Annotated[str | None, Form()] = None,
+    lastName: Annotated[str | None, Form()] = None,
+    bio: Annotated[str | None, Form()] = None,
+    phoneNo: Annotated[str | None, Form()] = None,
     photo: Annotated[UploadFile | None, File()] = None,
     current_user: dict = Depends(get_current_user),
 ):
@@ -182,9 +184,10 @@ async def update_profile(
     data = {
         k: v
         for k, v in {
-            "first_name": first_name,
-            "last_name": last_name,
-            "phone_no": phone_no,
+            "first_name": firstName,
+            "bi0": bio,
+            "last_name": lastName,
+            "phone_no": phoneNo,
         }.items()
         if v is not None
     }
@@ -215,6 +218,7 @@ def get_user_projects(
         WITH filtered AS (
             SELECT
                 p.id,
+                p.slug,
                 p.title,
                 p.status,
                 p.submitted_at,

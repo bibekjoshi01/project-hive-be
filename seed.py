@@ -1,6 +1,7 @@
 import uuid
 from app.database import execute_query
 
+
 CATEGORY_ROWS = [
     "C",
     "C++",
@@ -56,6 +57,14 @@ PROJECT_SEEDS = [
 ]
 
 
+new_project_seeds = []
+for row in PROJECT_SEEDS:
+    slug = str(uuid.uuid4())
+    new_row = list(row)
+    new_row.insert(2, slug)
+    new_project_seeds.append(tuple(new_row))
+
+
 def seed_lookup_tables():
     # Create Sample User
     user_query = f"""
@@ -91,11 +100,11 @@ def seed_lookup_tables():
     )
     execute_query(
         "INSERT INTO project ("
-        "  title, project_details, abstract, batch_year_id, category_id, department_id, "
+        "  title, project_details, slug, abstract, batch_year_id, category_id, department_id, "
         "  level, supervisor, technologies_used, github_link, "
         "  documentation_link, status, submitted_by, approved_by"
         ") VALUES "
-        + ",".join("(" + ",".join(["%s"] * 14) + ")" for _ in PROJECT_SEEDS)
+        + ",".join("(" + ",".join(["%s"] * 15) + ")" for _ in new_project_seeds)
         + ";",
-        tuple(value for row in PROJECT_SEEDS for value in row),
+        tuple(value for row in new_project_seeds for value in row),
     )

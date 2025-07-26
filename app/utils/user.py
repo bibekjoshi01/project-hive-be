@@ -94,7 +94,7 @@ def verify_otp(user_id: int, otp: str) -> bool:
 
 def get_user_data_by_id(user_id: int) -> dict | None:
     query = """
-        SELECT id, email, uuid, photo, username, first_name, last_name, phone_no, user_role, date_joined
+        SELECT id, email, uuid, photo, bi0, username, first_name, last_name, phone_no, user_role, date_joined
         FROM "user"
         WHERE id = %s AND NOT is_archived
         LIMIT 1;

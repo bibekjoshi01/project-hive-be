@@ -1,11 +1,15 @@
 from typing import List, Optional
+import uuid
 from fastapi import APIRouter, Depends, Query, HTTPException, status, Path
 from psycopg2 import IntegrityError, DataError
+from psycopg2.extras import RealDictCursor, execute_batch
+import urllib.parse
 
 # Project Imports
+from .utils import slugify
 from app.dependencies import get_current_user
 from app.utils.db import parse_ordering
-from app.database import execute_query, perform_query
+from app.database import execute_query, get_connection, perform_query, put_connection
 from .schemas.project import (
     BatchYearList,
     BatchYearResponse,
@@ -17,6 +21,7 @@ from .schemas.project import (
     ProjectList,
     ProjectResponse,
     ProjectRetrieveResponse,
+    RateProjectPayload,
     ResponseOut,
     SubmitProjectPayload,
 )
@@ -188,7 +193,7 @@ async def list_projects(
             JOIN department AS d ON p.department_id = d.id
             JOIN batch_year AS b ON p.batch_year_id = b.id
             JOIN "user" AS u ON p.submitted_by = u.id
-            WHERE p.is_active AND p.status = 'APPROVED'
+            WHERE p.is_active AND p.status = 'PENDING'
             AND (%s IS NULL OR p.title ILIKE '%%' || %s || '%%')
             AND (%s IS NULL OR p.category_id   = %s)
             AND (%s IS NULL OR p.level   = %s)
@@ -245,45 +250,55 @@ async def list_projects(
     return {"count": rows[0]["total_count"] if rows else 0, "results": results}
 
 
-@router.get("/projects/{project_id}", response_model=ProjectRetrieveResponse)
+@router.get("/projects/{project_slug}", response_model=ProjectRetrieveResponse)
 async def get_project(
-    project_id: int = Path(..., gt=0, description="Numeric primary key of project id"),
+    project_slug: str = Path(..., description="project slug unique"),
 ):
     sql = """
-        WITH filtered AS (
-            SELECT
-                p.id,
-                p.title,
-                p.abstract,
-                p.level,
-                p.supervisor,
-                p.technologies_used,
-                p.github_link,
-                p.documentation_link,
-                p.project_details,
-                p.status,
-                p.submitted_at,
-                u.first_name || ' ' || u.last_name AS submitted_by_full_name,
-                c.id AS category_id,
-                c.name AS category_name,
-                d.id AS department_id,
-                d.name AS department_name,
-                b.id AS batch_year_id,
-                b.year AS batch_year_year,
-                COALESCE(AVG(pr.rating)::numeric(3,2), 5.0) AS avg_rating
-            FROM project AS p
-            LEFT JOIN project_rating AS pr ON pr.project_id = p.id
-            JOIN category AS c ON p.category_id = c.id
-            JOIN department AS d ON p.department_id = d.id
-            JOIN batch_year AS b ON p.batch_year_id = b.id
-            JOIN "user" AS u ON p.submitted_by = u.id
-            WHERE p.is_active AND p.status = 'APPROVED' AND p.id = %s
-            GROUP BY p.id, c.id, d.id, b.id, u.id
-        )
-        SELECT * FROM filtered;
+    WITH rating_stats AS (
+        SELECT
+            project_id,
+            COUNT(*) AS total_ratings,
+            COALESCE(AVG(rating)::numeric(3,2), 5.0) AS avg_rating
+        FROM project_rating
+        GROUP BY project_id
+    ), filtered AS (
+        SELECT
+            p.id,
+            p.title,
+            p.abstract,
+            p.level,
+            p.views,
+            p.slug,
+            p.supervisor,
+            p.technologies_used,
+            p.github_link,
+            p.documentation_link,
+            p.project_details,
+            p.status,
+            p.submitted_at,
+            u.first_name || ' ' || u.last_name AS submitted_by_full_name,
+            c.id AS category_id,
+            c.name AS category_name,
+            d.id AS department_id,
+            d.name AS department_name,
+            b.id AS batch_year_id,
+            b.year AS batch_year_year,
+            COALESCE(rs.total_ratings, 0) AS total_ratings,
+            COALESCE(rs.avg_rating, 5.0) AS avg_rating
+        FROM project AS p
+        LEFT JOIN rating_stats AS rs ON rs.project_id = p.id
+        JOIN category AS c ON p.category_id = c.id
+        JOIN department AS d ON p.department_id = d.id
+        JOIN batch_year AS b ON p.batch_year_id = b.id
+        JOIN "user" AS u ON p.submitted_by = u.id
+        WHERE p.is_active AND p.status = 'PENDING' AND p.slug = %s
+    )
+    SELECT * FROM filtered;
+
     """
 
-    project_rows = perform_query(sql, (project_id,))
+    project_rows = perform_query(sql, (project_slug,))
     if not project_rows:
         raise HTTPException(status_code=404, detail="Project not found")
 
@@ -292,8 +307,8 @@ async def get_project(
     team_sql = "SELECT id, full_name, roll_no, photo FROM project_team_member WHERE project_id = %s;"
     files_sql = "SELECT id, file_type, file FROM project_files WHERE project_id = %s;"
 
-    team_members = perform_query(team_sql, (project_id,))
-    files = perform_query(files_sql, (project_id,))
+    team_members = perform_query(team_sql, (project_row["id"],))
+    files = perform_query(files_sql, (project_row["id"],))
 
     # Convert comma-separated strings into arrays
     technologies = (
@@ -302,13 +317,17 @@ async def get_project(
         else []
     )
     github_links = (
-        [link.strip() for link in project_row["github_link"].split(",")]
+        [
+            urllib.parse.unquote(link.strip())
+            for link in project_row["github_link"].split(",")
+        ]
         if project_row["github_link"]
         else []
     )
 
     data = {
         "id": project_row["id"],
+        "slug": project_row["slug"],
         "title": project_row["title"],
         "abstract": project_row["abstract"],
         "level": project_row["level"],
@@ -337,7 +356,8 @@ async def get_project(
             "year": project_row["batch_year_year"],
         },
         "rating_average": float(project_row["avg_rating"]),
-        # "views": project_row["views"],
+        "views": project_row["views"],
+        "total_ratings": project_row["total_ratings"],
         "team_members": [
             {
                 "id": t["id"],
@@ -358,56 +378,148 @@ async def get_project(
 
 @router.post("/submit-project", response_model=ResponseOut, status_code=201)
 async def submit_project(payload: SubmitProjectPayload, user=Depends(get_current_user)):
+    def _s(v):
+        return str(v) if v is not None else None
+
+    conn = get_connection()
+
     try:
-        execute_query(
-            """
-            INSERT INTO project (
-                title, abstract, batch_year_id, category_id, 
-                department_id, level, supervisor, project_details, 
-                technologies_used, github_link, documentation_link, 
-                submitted_by, submitted_at, approved_by
+        # Start a transaction
+        conn.autocommit = False
+
+        with conn.cursor(cursor_factory=RealDictCursor) as cur:
+            slug = slugify(payload.title)
+
+            # Ensure uniqueness by querying project table before insert
+            cur.execute("SELECT COUNT(*) FROM project WHERE slug = %s", (slug,))
+            if cur.fetchone()["count"] > 0:
+                slug = f"{slug}-{uuid.uuid4().hex[:8]}"
+
+            # Insert project and return id
+            cur.execute(
+                """
+                INSERT INTO project (
+                    title, slug, abstract, batch_year_id, category_id, 
+                    department_id, level, supervisor, project_details, 
+                    technologies_used, github_link, documentation_link, 
+                    submitted_by, submitted_at, approved_by
+                )
+                VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, NOW(), %s)
+                RETURNING id
+                """,
+                (
+                    payload.title,
+                    slug,
+                    payload.abstract,
+                    payload.batch_year,
+                    payload.category,
+                    payload.department,
+                    payload.level.value,
+                    (payload.supervisor or "Not Assigned").strip().title(),
+                    payload.project_details,
+                    payload.technologies_used,
+                    str(payload.github_link),
+                    str(payload.documentation_link),
+                    user["id"],
+                    user["id"],
+                ),
             )
-            VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, NOW(), %s)
-            """,
-            (
-                payload.title,
-                payload.abstract,
-                payload.batch_year,
-                payload.category,
-                payload.department,
-                payload.level.value,
-                payload.supervisor or "Not Assigned",
-                payload.project_details,
-                payload.technologies_used,
-                str(payload.github_link),
-                str(payload.documentation_link),
-                user["id"],
-                user["id"],
-            ),
-        )
+            project_row = cur.fetchone()
+            project_id = project_row["id"]
+
+            # Insert team members (batch insert is faster, too)
+            if payload.team_members:
+                execute_batch(
+                    cur,
+                    """
+                    INSERT INTO project_team_member (project_id, full_name, roll_no, photo)
+                    VALUES (%s, %s, %s, %s)
+                    """,
+                    [
+                        (
+                            project_id,
+                            tm.full_name.strip().title(),
+                            tm.roll_no.strip().title(),
+                            _s(tm.photo),
+                        )
+                        for tm in payload.team_members
+                    ],
+                )
+
+            # Insert files
+            if payload.files:
+                execute_batch(
+                    cur,
+                    """
+                    INSERT INTO project_files (project_id, file_type, file)
+                    VALUES (%s, %s, %s)
+                    """,
+                    [(project_id, f.file_type, _s(f.file)) for f in payload.files],
+                )
+
+        # If we get here, everything is fine
+        conn.commit()
+        return ResponseOut(message="Project submitted successfully")
+
     except IntegrityError as e:
-        # Handle foreign key violation
+        conn.rollback()
+        # Log exact constraint for diagnosis
+        constraint = getattr(getattr(e, "diag", None), "constraint_name", None)
         raise HTTPException(
             status_code=400,
-            detail="Invalid foreign key: Please check batch_year, category, or department.",
+            detail=f"Integrity error ({constraint}): Please check your foreign keys or unique constraints.",
         )
     except DataError as e:
-        raise HTTPException(status_code=400, detail=f"Invalid data: {e.pgerror}")
+        conn.rollback()
+        raise HTTPException(
+            status_code=400, detail=f"Invalid data: {getattr(e, 'pgerror', str(e))}"
+        )
+    except Exception as e:
+        conn.rollback()
+        raise HTTPException(
+            status_code=500,
+            detail=f"An unexpected error occurred while submitting the project. {str(e)}",
+        )
+    finally:
+        put_connection(conn)
+
+
+@router.post(
+    "/projects/{project_id}/increase-view", response_model=dict, status_code=200
+)
+def increase_view_count(project_id: int):
+    try:
+        row = execute_query(
+            """
+            UPDATE project
+            SET views = views + 1,
+                updated_at = NOW()
+            WHERE id = %s
+            RETURNING views;
+            """,
+            (project_id,),
+        )
+
+        if not row:
+            raise HTTPException(status_code=404, detail="Project not found")
+
+        return {"views": row["views"] if isinstance(row, dict) else row}
+
+    except HTTPException:
+        raise
     except Exception as e:
         raise HTTPException(
             status_code=500,
-            detail="An unexpected error occurred while submitting the project.",
+            detail=f"Failed to increase view count: {e}",
         )
-
-    return ResponseOut(message="Project submitted successfully")
 
 
 @router.patch(
-    "/projects/{project_id}/rate", response_model=ResponseOut, status_code=201
+    "/projects/{project_id}/rate", response_model=ResponseOut, status_code=200
 )
 def rate_project(
     project_id: int,
-    rating: int,
+    payload: RateProjectPayload,
     user=Depends(get_current_user),
 ):
     try:
@@ -418,7 +530,7 @@ def rate_project(
             ON CONFLICT (project_id, user_id)
             DO UPDATE SET rating = EXCLUDED.rating, updated_at = now();
             """,
-            (project_id, user["id"], rating),
+            (project_id, user["id"], payload.rating),
         )
 
         return {"message": "Thank you for your feedback."}

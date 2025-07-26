@@ -55,6 +55,7 @@ class BatchYearOut(CamelBaseModel):
 class ProjectResponse(CamelBaseModel):
     id: int
     title: str
+    slug: str
     abstract: str
     level: str
     supervisor: str
@@ -94,12 +95,12 @@ class LevelEnum(str, Enum):
 class TeamMemberPayload(CamelBaseModel):
     full_name: str
     roll_no: str
-    photo: Optional[str]
+    photo: Optional[HttpUrl]
 
 
 class ProjectFilePayload(CamelBaseModel):
     file_type: str
-    file: str
+    file: HttpUrl
 
 
 class SubmitProjectPayload(CamelBaseModel):
@@ -114,6 +115,8 @@ class SubmitProjectPayload(CamelBaseModel):
     technologies_used: str
     github_link: HttpUrl
     documentation_link: HttpUrl
+    team_members: List[TeamMemberPayload]
+    files: List[ProjectFilePayload]
 
 
 class ProjectTeamMemberOut(CamelBaseModel):
@@ -132,6 +135,7 @@ class ProjectFileOut(CamelBaseModel):
 class ProjectRetrieveResponse(CamelBaseModel):
     id: int
     title: str
+    slug: str
     abstract: str
     level: str
     supervisor: str
@@ -146,6 +150,11 @@ class ProjectRetrieveResponse(CamelBaseModel):
     department: DepartmentOut
     batch_year: BatchYearOut
     rating_average: float = Field(default=5.0)
+    total_ratings: int = Field(default=0)
     views: int = Field(default_factory=lambda: random.randint(0, 500))
     team_members: List[ProjectTeamMemberOut]
     files: List[ProjectFileOut]
+
+
+class RateProjectPayload(CamelBaseModel):
+    rating: int
