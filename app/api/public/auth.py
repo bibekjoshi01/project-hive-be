@@ -1,7 +1,7 @@
 from fastapi import APIRouter, Depends, HTTPException, Request, Response, status
 from fastapi.responses import JSONResponse
 from jose import JWTError
-from fastapi import Form, UploadFile, File
+from fastapi import Form, File
 from typing import Annotated
 
 # Project Imports
@@ -17,7 +17,6 @@ from app.utils.user import (
     update_user_profile,
     verify_otp,
 )
-from app.utils.file_handlers import get_full_url, save_upload_file
 from app.utils.send_otp import send_otp_email
 from .schemas.auth import (
     EmailLoginResponse,
@@ -42,7 +41,7 @@ router = APIRouter(prefix="/auth-app")
     summary="Signin with Google/Github",
 )
 async def oauth(request: Request, payload: OAuthRequest):
-    user_info = AuthTokenValidator.validate(
+    user_info = await AuthTokenValidator.validate(
         provider=payload.third_party_app.value,
         token=payload.auth_token,
     )
@@ -62,9 +61,6 @@ async def oauth(request: Request, payload: OAuthRequest):
     # JWT
     access = create_access_token(str(user["id"]))
     refresh = create_refresh_token(str(user["id"]))
-
-    if user.get("photo"):
-        user["photo"] = get_full_url(request, user["photo"])
 
     return {
         "access_token": access,
@@ -117,9 +113,6 @@ async def verify(request: Request, payload: OTPPayload):
     access = create_access_token(str(user["id"]))
     refresh = create_refresh_token(str(user["id"]))
 
-    if user.get("photo"):
-        user["photo"] = get_full_url(request, user["photo"])
-
     return {
         "access_token": access,
         "refresh_token": refresh,
@@ -164,9 +157,7 @@ async def profile(request: Request, current_user: dict = Depends(get_current_use
         )
     user_data["date_joined"] = user_data["date_joined"].isoformat()
     user_data["bio"] = user_data.get("bi0", "")
-
-    if user_data.get("photo"):
-        user_data["photo"] = get_full_url(request, user_data["photo"])
+    user_data["photo"] = user_data.get("photo", "")
 
     return user_data
 
@@ -177,7 +168,7 @@ async def update_profile(
     lastName: Annotated[str | None, Form()] = None,
     bio: Annotated[str | None, Form()] = None,
     phoneNo: Annotated[str | None, Form()] = None,
-    photo: Annotated[UploadFile | None, File()] = None,
+    photo: Annotated[str | None, File()] = None,
     current_user: dict = Depends(get_current_user),
 ):
 
@@ -187,15 +178,11 @@ async def update_profile(
             "first_name": firstName,
             "bi0": bio,
             "last_name": lastName,
+            "photo": photo,
             "phone_no": phoneNo,
         }.items()
         if v is not None
     }
-
-    if photo:
-        data["photo"] = save_upload_file(
-            photo, "user/photos", allowed_extensions=[".jpg", ".png", ".jpeg"]
-        )  # store relative URL
 
     if not data:
         raise HTTPException(

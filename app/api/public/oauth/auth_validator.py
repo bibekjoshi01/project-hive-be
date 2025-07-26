@@ -20,13 +20,13 @@ class AuthTokenValidator:
     provider_class_map = {"GOOGLE": GoogleOAuth, "GITHUB": GitHubOAuth}
 
     @staticmethod
-    def validate(provider: str, token: str) -> UserInfo:
+    async def validate(provider: str, token: str) -> UserInfo:
         try:
             if not AuthProviders.is_valid_provider(provider):
                 raise_api_exception(ERROR_MESSAGES["provider_not_supported"])
             else:
                 auth_provider = AuthTokenValidator.provider_class_map[provider]
-                user_info = auth_provider.validate(token)
+                user_info = await auth_provider.validate(token)
 
                 if user_info.get("type") != "success":
                     raise_api_exception(ERROR_MESSAGES["signin_failed"])

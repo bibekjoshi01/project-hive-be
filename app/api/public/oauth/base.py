@@ -8,6 +8,11 @@ class OAuthProvider:
     Base class for OAuth providers.
     """
 
+    GOOGLE_CLIENT_ID = settings.google_client_id
+    GOOGLE_CLIENT_SECRET = settings.google_client_secret
+    GITHUB_CLIENT_ID = settings.github_client_id
+    GITHUB_CLIENT_SECRET = settings.github_client_secret
+
     @staticmethod
     def _get_provider_settings(provider_name: str) -> dict[str, str]:
         """
@@ -21,7 +26,18 @@ class OAuthProvider:
             ValueError: If the provider settings are not found or invalid.
         """
 
-        provider_settings = settings.oauth_providers.get(provider_name, {})
+        mapping = {
+            "google": {
+                "client_id": OAuthProvider.GOOGLE_CLIENT_ID,
+                "client_secret": OAuthProvider.GOOGLE_CLIENT_SECRET,
+            },
+            "github": {
+                "client_id": OAuthProvider.GITHUB_CLIENT_ID,
+                "client_secret": OAuthProvider.GITHUB_CLIENT_SECRET,
+            },
+        }
+
+        provider_settings = mapping.get(provider_name, {})
 
         if not provider_settings:
             error_message = (

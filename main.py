@@ -38,7 +38,7 @@ async def lifespan(app: FastAPI):
     except OperationalError as e:
         print(f"Database connection error: {e}", file=sys.stderr)
         sys.exit(1)
-        
+
     seed_lookup_tables()
 
     yield

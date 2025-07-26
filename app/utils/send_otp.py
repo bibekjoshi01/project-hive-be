@@ -38,14 +38,39 @@ def send_otp_email(recipient_email: str, user_id: int, conn=None):
     message["To"] = recipient_email
 
     text = f"Your OTP code is: {otp}"
+
     html = f"""
     <html>
-        <body>
-            <p>Hi,<br>
-            Your OTP code is: <b>{otp}</b><br>
-            It will expire in 10 minutes.
-            </p>
-        </body>
+    <body style="font-family: Arial, sans-serif; background-color: #f4f4f4; margin: 0; padding: 0;">
+        <table align="center" border="0" cellpadding="0" cellspacing="0" width="100%" style="padding: 20px 0;">
+            <tr>
+                <td align="center">
+                    <table border="0" cellpadding="0" cellspacing="0" width="600" style="background-color: #ffffff; border-radius: 8px; padding: 20px;">
+                        <tr>
+                            <td align="center" style="padding-bottom: 20px;">
+                                <h2 style="color: #333333; margin: 0;">Thapathali Project Archive</h2>
+                            </td>
+                        </tr>
+                        <tr>
+                            <td style="padding: 20px; text-align: center; color: #555555; font-size: 16px;">
+                                <p style="margin: 0 0 10px;">Hello,</p>
+                                <p style="margin: 0 0 20px;">Your OTP code is:</p>
+                                <p style="font-size: 24px; font-weight: bold; color: #ffffff; background-color: #4CAF50; padding: 10px 20px; border-radius: 4px; display: inline-block;">
+                                    {otp}
+                                </p>
+                                <p style="margin: 20px 0 0;">This code will expire in <strong>10 minutes</strong>.</p>
+                            </td>
+                        </tr>
+                        <tr>
+                            <td style="padding: 20px; text-align: center; color: #aaaaaa; font-size: 12px;">
+                                <p style="margin: 0;">If you didn’t request this, you can ignore this email.</p>
+                            </td>
+                        </tr>
+                    </table>
+                </td>
+            </tr>
+        </table>
+    </body>
     </html>
     """
 
