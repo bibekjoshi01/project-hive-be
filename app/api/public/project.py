@@ -193,7 +193,7 @@ async def list_projects(
             JOIN department AS d ON p.department_id = d.id
             JOIN batch_year AS b ON p.batch_year_id = b.id
             JOIN "user" AS u ON p.submitted_by = u.id
-            WHERE p.is_active AND p.status = 'PENDING'
+            WHERE p.is_active AND p.status = 'APPROVED'
             AND (%s IS NULL OR p.title ILIKE '%%' || %s || '%%')
             AND (%s IS NULL OR p.category_id   = %s)
             AND (%s IS NULL OR p.level   = %s)
@@ -292,7 +292,7 @@ async def get_project(
         JOIN department AS d ON p.department_id = d.id
         JOIN batch_year AS b ON p.batch_year_id = b.id
         JOIN "user" AS u ON p.submitted_by = u.id
-        WHERE p.is_active AND p.status = 'PENDING' AND p.slug = %s
+        WHERE p.is_active AND p.status = 'APPROVED' AND p.slug = %s
     )
     SELECT * FROM filtered;
 

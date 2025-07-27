@@ -14,7 +14,6 @@ from slowapi import _rate_limit_exceeded_handler
 from app.config import settings
 from app.api import router as api_router
 from app.utils.throttling import limiter
-from seed import seed_lookup_tables
 
 db_pool = None
 MEDIA_ROOT = Path("media")
@@ -38,8 +37,6 @@ async def lifespan(app: FastAPI):
     except OperationalError as e:
         print(f"Database connection error: {e}", file=sys.stderr)
         sys.exit(1)
-
-    seed_lookup_tables()
 
     yield
 
