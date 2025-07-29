@@ -1,0 +1,26 @@
+version: "3.11"
+
+services:
+  api:
+    build: .
+    env_file: .env
+    environment:
+      DATABASE_URL: postgresql://postgres:admin@db:5432/project_hive
+      DB_HOST: db
+    depends_on:
+      - db
+    ports:
+      - "8000:8000"
+
+  db:
+    image: postgres:16
+    restart: unless-stopped
+    environment:
+      POSTGRES_DB: project_hive
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: admin
+    volumes:
+      - db_data:/var/lib/postgresql/data
+
+volumes:
+  db_data:
