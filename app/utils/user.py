@@ -92,6 +92,21 @@ def verify_otp(user_id: int, otp: str) -> bool:
     return is_valid
 
 
+def verify_password(user_id: int, password: str) -> bool:
+
+    select_sql = """
+        SELECT id
+        FROM "user"
+        WHERE id = %s AND password = %s
+        LIMIT 1;
+    """
+    rows = perform_query(select_sql, (user_id, password))
+    if rows:
+        return True
+
+    return False
+
+
 def get_user_data_by_id(user_id: int) -> dict | None:
     query = """
         SELECT id, email, uuid, photo, bi0, username, first_name, last_name, phone_no, user_role, date_joined
