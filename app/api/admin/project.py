@@ -7,7 +7,7 @@ from app.database import perform_query
 
 from .schemas.project import ProjectList, ProjectResponse, ProjectRetrieveResponse
 
-router = APIRouter(prefix="/project")
+router = APIRouter(prefix="/project-app")
 
 
 @router.get("/projects", response_model=ProjectList)

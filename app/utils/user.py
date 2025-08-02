@@ -5,22 +5,29 @@ from app.config import settings
 from app.database import execute_query, perform_query
 
 
-def get_user_by_email(email: str):
-    query = f"""
+def get_user_by_email(email: str, check_admin=False):
+    # Base query
+    query = """
     SELECT 
         id, 
         username, 
         first_name || ' ' || last_name AS full_name, 
         photo 
     FROM "user" 
-    WHERE email = '{email}' AND NOT is_archived;
+    WHERE email = %s AND NOT is_archived
     """
-    rows = perform_query(query)
+
+    params = [email]
+
+    if check_admin:
+        query += " AND user_role IN ('ADMIN', 'STAFF')"
+
+    rows = perform_query(query, params)
     return rows[0] if rows else None
 
 
 def get_user_by_id(id: str):
-    query = f"SELECT id, username FROM \"user\" WHERE id = '{id}' AND NOT is_archived;"
+    query = f"SELECT id, username, user_role FROM \"user\" WHERE id = '{id}' AND NOT is_archived;"
     rows = perform_query(query)
     return rows[0] if rows else None
 
