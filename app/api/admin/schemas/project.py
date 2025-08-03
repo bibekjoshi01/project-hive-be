@@ -1,3 +1,4 @@
+from enum import Enum
 from app.utils.casing import CamelBaseModel
 from typing import Optional, List
 from pydantic import Field
@@ -62,3 +63,13 @@ class ProjectRetrieveResponse(CamelBaseModel):
     batch_year: BatchYearOut
     rating_average: float = Field(default=5.0)
     total_ratings: int = Field(default=0)
+
+
+class ProjectStatus(str, Enum):
+    APPROVED = "APPROVED"
+    REJECTED = "REJECTED"
+
+
+class ProjectApprovalPayload(CamelBaseModel):
+    project_id: int
+    status: ProjectStatus

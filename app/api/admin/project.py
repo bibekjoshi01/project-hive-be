@@ -1,11 +1,17 @@
-from fastapi import APIRouter, HTTPException
+from fastapi import APIRouter, Depends, HTTPException, Request
 from typing import Optional, List
 from fastapi import Query, Path
 import urllib.parse
 
-from app.database import perform_query
+from app.database import execute_query, perform_query
+from app.dependencies import get_current_admin_user
 
-from .schemas.project import ProjectList, ProjectResponse, ProjectRetrieveResponse
+from .schemas.project import (
+    ProjectApprovalPayload,
+    ProjectList,
+    ProjectResponse,
+    ProjectRetrieveResponse,
+)
 
 router = APIRouter(prefix="/project-app")
 
@@ -15,6 +21,7 @@ async def list_projects(
     search: Optional[str] = Query(None, description="Search project title ILIKE"),
     limit: int = Query(10, ge=1, le=100),
     offset: int = Query(0, ge=0),
+    current_user: dict = Depends(get_current_admin_user),
 ):
     sql = f"""
         WITH filtered AS (
@@ -35,16 +42,12 @@ async def list_projects(
             JOIN department AS d ON p.department_id = d.id
             JOIN batch_year AS b ON p.batch_year_id = b.id
             JOIN "user" AS u ON p.submitted_by = u.id
-            WHERE p.is_active AND p.status = 'APPROVED'
+            WHERE p.is_active
             AND (%s IS NULL OR p.title ILIKE '%%' || %s || '%%')
-            AND (%s IS NULL OR p.category_id   = %s)
-            AND (%s IS NULL OR p.level   = %s)
-            AND (%s IS NULL OR p.department_id = %s)
-            AND (%s IS NULL OR p.batch_year_id = %s)
             GROUP BY p.id, c.id, d.id, b.id, u.id
         )
         SELECT * FROM filtered
-        ORDER BY p.submitted_at DESC
+        ORDER BY submitted_at DESC
         LIMIT %s OFFSET %s;
     """
 
@@ -203,3 +206,20 @@ async def get_project(
     }
 
     return data
+
+
+@router.post("/review-project", status_code=200)
+async def review_project(request: Request, payload: ProjectApprovalPayload):
+    try:
+        sql = """
+            UPDATE project
+            SET status = %s, updated_at = NOW()
+            WHERE id = %s;
+        """
+        execute_query(sql, (payload.status.value, payload.project_id))
+    except Exception:
+        raise HTTPException("Failed to update the status")
+
+    return {
+        "message": f"Project {payload.project_id} has been marked as {payload.status.value}."
+    }
