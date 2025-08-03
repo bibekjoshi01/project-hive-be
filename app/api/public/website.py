@@ -1,5 +1,5 @@
 from typing import List, Optional
-from fastapi import APIRouter, Query, Request, status
+from fastapi import APIRouter, HTTPException, Query, Request, status
 
 from app.api.public.schemas.project import CategoryList, CategoryResponse
 from app.utils.db import parse_ordering
@@ -17,12 +17,16 @@ CONTACT_LIMIT = "5/minute"  # allow 5 messages per IP per minute
 @router.post("/subscribe-newsletter", status_code=status.HTTP_201_CREATED)
 @limiter.limit(CONTACT_LIMIT)
 async def subscribe_newsletter(request: Request, payload: NewsletterSubscribePayload):
-    sql = """
-        INSERT INTO newsletter_subscriber (email)
-        VALUES (%s)
-        ON CONFLICT (email) DO NOTHING;
-    """
-    execute_query(sql, (payload.email,))
+    try:
+        sql = """
+            INSERT INTO newsletter_subscriber (email)
+            VALUES (%s)
+            ON CONFLICT (email) DO NOTHING;
+        """
+        execute_query(sql, (payload.email,))
+    except Exception:
+        raise HTTPException("Failed to subscribe newsletter")
+
     return {
         "message": "Thank you for subscribing! You'll receive the latest project updates."
     }
@@ -31,18 +35,21 @@ async def subscribe_newsletter(request: Request, payload: NewsletterSubscribePay
 @router.post("/contact", status_code=status.HTTP_201_CREATED)
 @limiter.limit(CONTACT_LIMIT)
 async def send_contact_request(request: Request, payload: ContactPayload):
-    sql = """
-        INSERT INTO contact_message (full_name, email, phone_no, subject, message)
-        VALUES (%s, %s, %s, %s, %s)
-    """
-    params = (
-        payload.full_name,
-        payload.email,
-        payload.phone_no,
-        payload.subject,
-        payload.message,
-    )
-    execute_query(sql, params)
+    try:
+        sql = """
+            INSERT INTO contact_message (full_name, email, phone_no, subject, message)
+            VALUES (%s, %s, %s, %s, %s)
+        """
+        params = (
+            payload.full_name,
+            payload.email,
+            payload.phone_no,
+            payload.subject,
+            payload.message,
+        )
+        execute_query(sql, params)
+    except Exception:
+        raise HTTPException("Failed to send request. Try again!")
 
     return {
         "message": "Thank you for your message! We'll get back to you soon.",
