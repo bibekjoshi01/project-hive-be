@@ -19,8 +19,6 @@ from seed import seed_lookup_tables
 db_pool = None
 MEDIA_ROOT = Path("media")
 MEDIA_ROOT.mkdir(parents=True, exist_ok=True)
-allowed_cors_origins = settings.allowed_cors_origins
-allowed_hosts = settings.allowed_hosts
 
 
 @asynccontextmanager
@@ -39,7 +37,7 @@ async def lifespan(app: FastAPI):
         print(f"Database connection error: {e}", file=sys.stderr)
         sys.exit(1)
 
-    # seed_lookup_tables()
+    seed_lookup_tables()
     yield
 
     if db_pool:
@@ -70,11 +68,11 @@ app.include_router(api_router, prefix="/api")
 # Middlewares
 app.add_middleware(
     CORSMiddleware,
-    allowed_cors_origins,
+    allow_origins=settings.allowed_cors_origins,
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
 )
 
 if settings.debug:
-    app.add_middleware(TrustedHostMiddleware, allowed_hosts=["*"])
+    app.add_middleware(TrustedHostMiddleware, allowed_hosts=settings.allowed_hosts)

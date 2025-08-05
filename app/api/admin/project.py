@@ -82,9 +82,10 @@ async def list_projects(
     return {"count": rows[0]["total_count"] if rows else 0, "results": results}
 
 
-@router.get("/projects/{project_slug}", response_model=ProjectRetrieveResponse)
+@router.get("/projects/{project_id}", response_model=ProjectRetrieveResponse)
 async def get_project(
-    project_slug: str = Path(..., description="project slug unique"),
+    project_id: str = Path(..., description="project slug unique"),
+    current_user: dict = Depends(get_current_admin_user),
 ):
     sql = """
     WITH rating_stats AS (
@@ -124,13 +125,13 @@ async def get_project(
         JOIN department AS d ON p.department_id = d.id
         JOIN batch_year AS b ON p.batch_year_id = b.id
         JOIN "user" AS u ON p.submitted_by = u.id
-        WHERE p.is_active AND p.status = 'APPROVED' AND p.slug = %s
+        WHERE p.is_active AND p.id = %s
     )
     SELECT * FROM filtered;
 
     """
 
-    project_rows = perform_query(sql, (project_slug,))
+    project_rows = perform_query(sql, (project_id,))
     if not project_rows:
         raise HTTPException(status_code=404, detail="Project not found")
 

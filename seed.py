@@ -32,12 +32,12 @@ def seed_lookup_tables():
     # Create Admin User
     user_query = f"""
     INSERT INTO "user" (
-        uuid, username, first_name, last_name, phone_no, user_role,
+        uuid, username, password, first_name, last_name, phone_no, user_role,
         email, is_active, is_archived, date_joined, updated_at
     )
     VALUES (
-        '{uuid.uuid4()}', 'admin', 'Admin', 'Admin', '9800000000', 'ADMIN',
-        'admin@gmail.com', TRUE, FALSE, now(), now()
+        '{uuid.uuid4()}', 'project_admin', 'tcioeProject@123', 'Project', 'Admin', '9800000000', 'ADMIN',
+        'projects.admin@tcioe.edu.np', TRUE, FALSE, now(), now()
     )
     ON CONFLICT (username) DO NOTHING;
     """

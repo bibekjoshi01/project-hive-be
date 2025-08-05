@@ -1,4 +1,5 @@
 from enum import Enum
+import random
 from app.utils.casing import CamelBaseModel
 from typing import Optional, List
 from pydantic import Field
@@ -44,6 +45,19 @@ class ProjectList(CamelBaseModel):
     results: List[ProjectResponse]
 
 
+class ProjectTeamMemberOut(CamelBaseModel):
+    id: int
+    full_name: str
+    roll_no: str
+    photo: Optional[str]
+
+
+class ProjectFileOut(CamelBaseModel):
+    id: int
+    file_type: str
+    file: str
+
+
 class ProjectRetrieveResponse(CamelBaseModel):
     id: int
     title: str
@@ -63,6 +77,9 @@ class ProjectRetrieveResponse(CamelBaseModel):
     batch_year: BatchYearOut
     rating_average: float = Field(default=5.0)
     total_ratings: int = Field(default=0)
+    team_members: List[ProjectTeamMemberOut]
+    files: List[ProjectFileOut]
+    views: int = Field(default_factory=lambda: random.randint(0, 500))
 
 
 class ProjectStatus(str, Enum):
