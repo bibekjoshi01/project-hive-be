@@ -43,7 +43,7 @@ To store the project archives of students.
   6. Start the FastAPI Server
 
      ```bash
-     uvicorn app.main:app --reload
+     uvicorn main:app --reload
 
   **The app will be available at http://localhost:8000**
 
@@ -82,7 +82,7 @@ To store the project archives of students.
 
 ## Migrations
 
-    MAKE MIGRATIONS:  alembic revision -m "message"
+    MAKE MIGRATIONS: alembic revision -m "message"
     MIGRATE: alembic upgrade head
 
 ## Running Tests

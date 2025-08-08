@@ -439,7 +439,7 @@ async def submit_project(payload: SubmitProjectPayload, user=Depends(get_current
                         (
                             project_id,
                             tm.full_name.strip().title(),
-                            tm.roll_no.strip().title(),
+                            tm.roll_no.strip().upper(),
                             _s(tm.photo),
                         )
                         for tm in payload.team_members
