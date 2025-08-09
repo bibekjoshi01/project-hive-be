@@ -1,6 +1,16 @@
 # Project Hive Backend
 
-Backend service for the **College Project Archive Platform**, responsible for storing and managing project archives of students. This API handles project data, categorization, file storage, search functionality, and user/admin operations.
+The backend service for the College Project Archive Platform, Project Hive handles storing, managing, and serving student project archives. It provides RESTful APIs for project CRUD operations, categorization by department, subject, and batch, file handling, and user/admin management.
+
+## Tech Stack Used
+
+- **Framework:** FastAPI  
+- **Database:** PostgreSQL  
+- **Database Queries:** Raw SQL for optimized operations  
+- **Migrations:** Alembic  
+- **API Documentation:** Built-in Swagger UI (provided by FastAPI)  
+- **Containerization:** Docker  
+- **Code Quality & Formatting:** Ruff, Black, pre-commit hooks  
 
 ---
 
@@ -82,11 +92,6 @@ Backend service for the **College Project Archive Platform**, responsible for st
    ruff format
    black .
    pre-commit run --all-files
-
-3. **Running Tests**
-   ```bash
-   pytest -v -s```
-
 
 ---
 
