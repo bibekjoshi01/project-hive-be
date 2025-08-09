@@ -1,91 +1,101 @@
-# PROJECT HIVE BACKEND
+# Project Hive Backend
 
-To store the project archives of students.
+Backend service for the **College Project Archive Platform**, responsible for storing and managing project archives of students. This API handles project data, categorization, file storage, search functionality, and user/admin operations.
+
 ---
 
 ## Prerequisites
 
-1. Python 3.10+ installed (if running locally)
-2. Docker installed (if running with Docker)
-3. `.env` file with required environment variables set (see `.env.example`)
+- **Python**: 3.10+ (if running locally)
+- **Docker** (optional, if running with Docker)
+- `.env` file with required environment variables (see `.env.example`)
 
 ---
 
 ## Running Locally (Without Docker)
 
-1. Clone the repo
-
+1. **Clone the Repository**
    ```bash
    git clone https://github.com/bibekjoshi01/project-hive-be
    cd project-hive-be
 
-2. Create and activate a virtual environment
-
-    ```bash
-    # On Windows
-    python -m venv venv
-    venv\Scripts\activate
-   ```
-
-    ```bash
-    # On macOS/Linux
-    python3 -m venv venv
-    source venv/bin/activate
-   ```
-
-  3. Install Dependencies
-
+2. **Create & Activate a Virtual Environment**
+   - **Windows**
      ```bash
-     pip install -r requirements.txt
-
-  4. Setup *.env* file (create from .env.example and fill in required variables)
-
-  6. Start the FastAPI Server
-
+     python -m venv venv
+     venv\Scripts\activate
+     ```
+   - **macOS / Linux**
      ```bash
-     uvicorn main:app --reload
+     python3 -m venv venv
+     source venv/bin/activate
+     ```
 
-  **The app will be available at http://localhost:8000**
+3. **Install Dependencies**
+   ```bash
+   pip install -r requirements.txt
+
+3. **Set Up Environment Variables**
+   - Copy .env.example to .env
+   - Fill in the required variables
+
+4. **Start the FastAPI Server**
+   ```bash
+   uvicorn main:app --reload
+   ```
+   - The API will be available at: http://localhost:8000
 
 ---
 
 ## Running with Docker
 
-1. Clone the repo
-
+1. **Clone the Repository**
    ```bash
    git clone https://github.com/bibekjoshi01/project-hive-be
    cd project-hive-be
 
-2. Create a *.env* file in the project root with required variables (see .env.example).
+2. **Set Up Environment Variables**
+   - Copy .env.example to .env
+   - Fill in the required variables
 
-4. Build and Run the docker image
-
+3. **Build and Run with docker**
    ```bash
    docker compose up --build
 
-
-**The app will be available at http://localhost:8000**
-
-**Note:** To stop the Docker container, use docker ps to find the container ID and then docker stop <container_id>
+3. **Stop the container**
+   ```bash
+   docker ps   # find container ID
+   docker stop <container_id>
 
 ---
 
-## Formatting and Linting Code
+## Code Formatting & Linting
 
-   ```pre-commit install```
-
-1. ruff check / ruff check --fix / ruff format
-2. black .
-3. pre-commit run --all-files
-
-
-## Migrations
-
-    MAKE MIGRATIONS: alembic revision -m "message"
-    MIGRATE: alembic upgrade head
-
-## Running Tests
-
+1. **Install pre-commit hooks**
    ```bash
-   pytest -v -s
+   pre-commit install
+
+2. **Format and Lint**
+   ```bash
+   ruff check
+   ruff check --fix
+   ruff format
+   black .
+   pre-commit run --all-files
+
+3. **Running Tests**
+   ```bash
+   pytest -v -s```
+
+
+---
+
+## Database Migrations
+
+1. **Create a new migration:**
+   ```bash
+   alembic revision -m "your message"
+
+2. **Apply migrations:**
+   ```bash
+   alembic upgrade head
